@@ -34,7 +34,21 @@ const verificationSchema = new mongoose.Schema({
     forgeryDetection: String,
     documentStatus: String,
     extractedName: String,
-    extractedAddress: String
+    extractedAddress: String,
+    anomalyScore: Number,
+    fraudStatus: String,
+    ocrData: {
+      type: Object,
+      default: null
+    },
+    classScores: {
+      type: Object,
+      default: null
+    },
+    similarRecords: {
+      type: Array,
+      default: null
+    }
   },
   identityFile: String,
   supportingFiles: [String]

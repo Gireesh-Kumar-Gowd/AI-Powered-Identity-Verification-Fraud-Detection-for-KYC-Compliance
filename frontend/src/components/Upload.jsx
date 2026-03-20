@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import DashboardLayout from "./DashboardLayout";
+import { verifyDocument } from "../services/api";
 
 const Upload = () => {
  
@@ -10,33 +11,29 @@ const Upload = () => {
   const [aiStatus, setAiStatus] = useState("idle");
   const [progress, setProgress] = useState(0);
   const [scanStep, setScanStep] = useState(0);
+  const [verificationResult, setVerificationResult] = useState(null);
+  const [verificationError, setVerificationError] = useState(null);
 
-  
   const [supportingFiles, setSupportingFiles] = useState([]);
   const supportingInputRef = useRef(null);
 
+  // Simulate progress while API call is in-flight; stop at 90% until resolved
   useEffect(() => {
     if (aiStatus === "scanning") {
       let currentProgress = 0;
       
       const interval = setInterval(() => {
-        currentProgress += 1.5; 
-        
-        if (currentProgress > 100) {
-          currentProgress = 100;
-        }
-        
-        setProgress(Math.floor(currentProgress));
-
-        if (currentProgress > 20) setScanStep(1); 
-        if (currentProgress > 45) setScanStep(2); 
-        if (currentProgress > 75) setScanStep(3); 
-        if (currentProgress >= 100) {
-          setScanStep(4); 
+        currentProgress += 1.5;
+        // Cap at 90% — the remaining 10% is filled when API resolves
+        if (currentProgress >= 90) {
           clearInterval(interval);
-          setAiStatus("completed");
+          currentProgress = 90;
         }
-      }, 50); 
+        setProgress(Math.floor(currentProgress));
+        if (currentProgress > 20) setScanStep(1);
+        if (currentProgress > 45) setScanStep(2);
+        if (currentProgress > 75) setScanStep(3);
+      }, 80);
 
       return () => clearInterval(interval);
     } else if (aiStatus === "idle") {
@@ -79,10 +76,38 @@ const Upload = () => {
   const handleRemoveFile = (e) => {
     if (e) e.stopPropagation();
     setMainFile(null);
-    setSupportingFiles([]); 
+    setSupportingFiles([]);
     setAiStatus("idle");
+    setVerificationResult(null);
+    setVerificationError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (supportingInputRef.current) supportingInputRef.current.value = "";
+  };
+
+  const handleStartVerification = async () => {
+    if (!mainFile) return;
+    setVerificationResult(null);
+    setVerificationError(null);
+    setAiStatus("scanning");
+
+    try {
+      const data = await verifyDocument(mainFile, supportingFiles);
+      // Fill progress to 100% and mark all steps done
+      setScanStep(4);
+      setProgress(100);
+      if (data.success) {
+        setVerificationResult(data.data);
+        setAiStatus("completed");
+      } else {
+        setVerificationError(data.error || "Verification failed");
+        setAiStatus("completed");
+      }
+    } catch (err) {
+      setScanStep(4);
+      setProgress(100);
+      setVerificationError("Could not reach server. Please try again.");
+      setAiStatus("completed");
+    }
   };
 
   const formatFileSize = (bytes) => {
@@ -255,27 +280,102 @@ const Upload = () => {
 
           {aiStatus === 'results' && (
             <div className="result-card fade-in" style={{ width: '100%' }}>
-              <div className="result-score-circle">92%</div>
-              <h3 style={{ fontSize: '15px', color: 'var(--text-primary)', marginBottom: '16px', fontWeight: '600' }}>High Confidence Match</h3>
-              
-              <div className="result-row">
-                <span className="result-label">Face Match</span>
-                <span className="result-value text-success">Successful</span>
-              </div>
-              <div className="result-row">
-                <span className="result-label">Forgery Detection</span>
-                <span className="result-value text-success">Low Risk</span>
-              </div>
-              <div className="result-row">
-                <span className="result-label">Document Status</span>
-                <span className="result-value text-success">Verified</span>
-              </div>
+              {verificationError ? (
+                <div style={{ color: 'var(--danger)', fontSize: '14px', textAlign: 'center', padding: '12px 0' }}>
+                  ⚠️ {verificationError}
+                </div>
+              ) : verificationResult ? (
+                <>
+                  <div
+                    className="result-score-circle"
+                    style={{ background: verificationResult.status === 'Approved' ? 'var(--success)' : 'var(--danger)' }}
+                  >
+                    {Math.round(verificationResult.confidence)}%
+                  </div>
+                  <h3 style={{ fontSize: '15px', color: 'var(--text-primary)', marginBottom: '16px', fontWeight: '600' }}>
+                    {verificationResult.status === 'Approved' ? 'Verification Approved' : 'Verification Rejected'}
+                  </h3>
+
+                  <div className="result-row">
+                    <span className="result-label">Document Type</span>
+                    <span className="result-value">{verificationResult.docType}</span>
+                  </div>
+                  <div className="result-row">
+                    <span className="result-label">Status</span>
+                    <span className={`result-value ${verificationResult.status === 'Approved' ? 'text-success' : 'text-danger'}`}>
+                      {verificationResult.status}
+                    </span>
+                  </div>
+                  <div className="result-row">
+                    <span className="result-label">Document Status</span>
+                    <span className="result-value">{verificationResult.details?.documentStatus || '—'}</span>
+                  </div>
+                  <div className="result-row">
+                    <span className="result-label">Fraud Check</span>
+                    <span className={`result-value ${verificationResult.details?.fraudStatus === 'Normal KYC Record' ? 'text-success' : 'text-danger'}`}>
+                      {verificationResult.details?.fraudStatus || 'Not analyzed'}
+                    </span>
+                  </div>
+                  {verificationResult.details?.anomalyScore != null && (
+                    <div className="result-row">
+                      <span className="result-label">Anomaly Score</span>
+                      <span className="result-value">{verificationResult.details.anomalyScore}</span>
+                    </div>
+                  )}
+                  {verificationResult.details?.ocrData && (
+                    <>
+                      {verificationResult.details.ocrData['Full Name'] && (
+                        <div className="result-row">
+                          <span className="result-label">Name</span>
+                          <span className="result-value">{verificationResult.details.ocrData['Full Name']}</span>
+                        </div>
+                      )}
+                      {verificationResult.details.ocrData['Date/Year of Birth'] && (
+                        <div className="result-row">
+                          <span className="result-label">Date of Birth</span>
+                          <span className="result-value">{verificationResult.details.ocrData['Date/Year of Birth']}</span>
+                        </div>
+                      )}
+                      {verificationResult.details.ocrData['Gender'] && (
+                        <div className="result-row">
+                          <span className="result-label">Gender</span>
+                          <span className="result-value">{verificationResult.details.ocrData['Gender']}</span>
+                        </div>
+                      )}
+                      {verificationResult.details.ocrData['Aadhaar Number'] && (
+                        <div className="result-row">
+                          <span className="result-label">Aadhaar No.</span>
+                          <span className="result-value">{verificationResult.details.ocrData['Aadhaar Number']}</span>
+                        </div>
+                      )}
+                      {verificationResult.details.ocrData['PAN Number'] && (
+                        <div className="result-row">
+                          <span className="result-label">PAN No.</span>
+                          <span className="result-value">{verificationResult.details.ocrData['PAN Number']}</span>
+                        </div>
+                      )}
+                      {verificationResult.details.ocrData['Passport Number'] && (
+                        <div className="result-row">
+                          <span className="result-label">Passport No.</span>
+                          <span className="result-value">{verificationResult.details.ocrData['Passport Number']}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {verificationResult.details?.ocrData?.['Date of Birth'] && (
+                    <div className="result-row">
+                      <span className="result-label">Date of Birth</span>
+                      <span className="result-value">{verificationResult.details.ocrData['Date of Birth']}</span>
+                    </div>
+                  )}
+                </>
+              ) : null}
             </div>
           )}
 
           <div style={{ width: "100%", marginTop: "auto" }}>
             {aiStatus === 'idle' && (
-              <button className="btn-primary" onClick={() => setAiStatus("scanning")} disabled={!mainFile}>
+              <button className="btn-primary" onClick={handleStartVerification} disabled={!mainFile}>
                 Start AI Verification
               </button>
             )}

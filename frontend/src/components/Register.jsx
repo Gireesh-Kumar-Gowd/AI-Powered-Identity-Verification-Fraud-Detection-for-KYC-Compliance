@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // 1. Import useNavigate
+import { useNavigate } from "react-router-dom";
+import { registerUser } from "../services/api";
 import "../styles/Register.css";
 
 function Register() {
@@ -9,8 +10,9 @@ function Register() {
     password: "",
     confirmPassword: ""
   });
-
-  const navigate = useNavigate(); // 2. Initialize navigate
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({
@@ -19,19 +21,35 @@ function Register() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
+      setError("Passwords do not match");
       return;
     }
 
-    console.log("Register Data:", formData);
-    alert("Account created successfully!");
-    
-    // 3. Redirect to the Login page after registering
-    navigate("/"); 
+    setLoading(true);
+
+    try {
+      const data = await registerUser({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (data.success) {
+        alert("Account created successfully!");
+        navigate("/login");
+      } else {
+        setError(data.error || "Registration failed");
+      }
+    } catch (err) {
+      setError("Server unavailable. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,6 +57,12 @@ function Register() {
       <div className="register-card">
         <h2>Create Account</h2>
         <p className="subtitle">Create your new account</p>
+
+        {error && (
+          <div style={{ color: "#e74c3c", fontSize: "13px", marginBottom: "12px", textAlign: "center" }}>
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="input-group">
@@ -85,13 +109,13 @@ function Register() {
             <label>Confirm Password</label>
           </div>
 
-          <button type="submit" className="register-btn">
-            Create Account
+          <button type="submit" className="register-btn" disabled={loading}>
+            {loading ? "Creating..." : "Create Account"}
           </button>
         </form>
 
         <div className="extra-links">
-          <a href="/">Already have an account?</a>
+          <a href="/login">Already have an account?</a>
         </div>
       </div>
     </div>

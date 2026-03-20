@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // 1. Import useNavigate
+import { useNavigate } from "react-router-dom";
+import { loginUser } from "../services/api";
 import "../styles/Login.css";
 
 function Login() {
@@ -7,9 +8,10 @@ function Login() {
     email: "",
     password: ""
   });
-  
   const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate(); // 2. Initialize navigate
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({
@@ -18,19 +20,36 @@ function Login() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Login Data:", formData);
-    
-    // 3. Navigate to the Upload page after successful login
-    navigate("/upload"); 
+    setError("");
+    setLoading(true);
+
+    try {
+      const data = await loginUser(formData);
+      if (data.success) {
+        navigate("/upload");
+      } else {
+        setError(data.error || "Login failed");
+      }
+    } catch (err) {
+      setError("Server unavailable. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="login-container">
       <div className="login-card">
-        <h2>Welcome Back 👋</h2>
+        <h2>Welcome Back</h2>
         <p className="subtitle">Please login to your account</p>
+
+        {error && (
+          <div style={{ color: "#e74c3c", fontSize: "13px", marginBottom: "12px", textAlign: "center" }}>
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="input-group">
@@ -61,8 +80,8 @@ function Login() {
             </span>
           </div>
 
-          <button type="submit" className="login-btn">
-            Login
+          <button type="submit" className="login-btn" disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
