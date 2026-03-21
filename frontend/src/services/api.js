@@ -1,4 +1,5 @@
 const API_BASE = "http://localhost:5000/api";
+const ML_API_BASE = "http://localhost:5001/api/ml";
 
 function getToken() {
   return localStorage.getItem("token");
@@ -41,6 +42,56 @@ export async function verifyDocument(identityFile, supportingFiles = []) {
     method: "POST",
     headers: authHeaders(),
     body: formData,
+  });
+  return res.json();
+}
+
+// ===========================================================================
+// NEW: 5-Step ML Pipeline API Calls
+// ===========================================================================
+
+export async function detectDocumentType(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  
+  const res = await fetch(`${ML_API_BASE}/detect-document-type`, {
+    method: "POST",
+    body: formData,
+  });
+  return res.json();
+}
+
+export async function extractOCRText(requestId, documentType) {
+  const res = await fetch(`${ML_API_BASE}/extract-text`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ request_id: requestId, document_type: documentType }),
+  });
+  return res.json();
+}
+
+export async function parseDocument(requestId, documentType, rawOcrText) {
+  const res = await fetch(`${ML_API_BASE}/parse-document`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      request_id: requestId,
+      document_type: documentType,
+      raw_ocr_text: rawOcrText,
+    }),
+  });
+  return res.json();
+}
+
+export async function runFraudAnalysis(requestId, documentType, extractedData) {
+  const res = await fetch(`${ML_API_BASE}/fraud-analysis`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      request_id: requestId,
+      document_type: documentType,
+      extracted_data: extractedData,
+    }),
   });
   return res.json();
 }

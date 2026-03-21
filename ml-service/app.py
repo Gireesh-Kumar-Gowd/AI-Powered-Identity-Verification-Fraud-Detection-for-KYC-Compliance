@@ -88,7 +88,7 @@ Return ONLY the JSON object, no additional text.""",
 # ---------------------------------------------------------------------------
 CLASS_MAP = {0: "Aadhaar Card", 1: "Pan Card", 2: "Passport", 3: "Non-KYC Document"}
 
-FRAUD_THRESHOLD = 0.1
+FRAUD_THRESHOLD = 0.9
 
 # Passport month abbreviation lookup
 MONTH_ABBR = {
@@ -498,12 +498,13 @@ def extract_with_groq(raw_text: str, doc_type: str) -> dict:
     prompt = GROQ_PROMPTS[doc_type].format(ocr_text=raw_text)
     
     try:
-        message = groq_client.messages.create(
+        # Groq 0.4.2 API uses chat.completions.create
+        message = groq_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}]
         )
-        response_text = message.content[0].text.strip()
+        response_text = message.choices[0].message.content.strip()
         
         # Parse JSON response
         extracted_data = json.loads(response_text)
@@ -565,6 +566,159 @@ def classify_document(image_path: str):
 app = Flask(__name__)
 CORS(app)
 
+# Global variable to store temp file path for multi-step requests
+temp_image_cache = {}
+
+
+# ===========================================================================
+# NEW ENDPOINTS: Modular 5-step pipeline
+# ===========================================================================
+
+@app.route("/api/ml/detect-document-type", methods=["POST"])
+def detect_document_type():
+    """Step 1: Detect document type from image."""
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "Empty filename"}), 400
+    
+    suffix = os.path.splitext(file.filename)[1] or ".jpg"
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    try:
+        file.save(tmp.name)
+        tmp.close()
+        
+        # Store in cache for subsequent steps
+        request_id = os.path.basename(tmp.name)
+        temp_image_cache[request_id] = tmp.name
+        
+        # Classify document
+        document_type, confidence, class_scores = classify_document(tmp.name)
+        
+        return jsonify({
+            "success": True,
+            "request_id": request_id,
+            "document_type": document_type,
+            "confidence": round(confidence, 2),
+            "class_scores": class_scores
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"error": f"Detection failed: {str(e)}"}), 500
+    finally:
+        # Don't delete - keep for next steps
+        pass
+
+
+@app.route("/api/ml/extract-text", methods=["POST"])
+def extract_text():
+    """Step 2: Extract OCR text from document."""
+    request_id = request.json.get("request_id")
+    document_type = request.json.get("document_type")
+    
+    if not request_id or request_id not in temp_image_cache:
+        return jsonify({"error": "Invalid request_id. Call detect-document-type first."}), 400
+    
+    image_path = temp_image_cache[request_id]
+    
+    try:
+        raw_text = extract_text_easyocr(image_path)
+        
+        return jsonify({
+            "success": True,
+            "request_id": request_id,
+            "document_type": document_type,
+            "raw_ocr_text": raw_text,
+            "text_length": len(raw_text)
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"error": f"OCR extraction failed: {str(e)}"}), 500
+
+
+@app.route("/api/ml/parse-document", methods=["POST"])
+def parse_document():
+    """Step 3: Parse OCR text into structured JSON using Groq."""
+    request_id = request.json.get("request_id")
+    document_type = request.json.get("document_type")
+    raw_ocr_text = request.json.get("raw_ocr_text")
+    
+    if not document_type or not raw_ocr_text:
+        return jsonify({"error": "Missing document_type or raw_ocr_text"}), 400
+    
+    try:
+        extracted_data = extract_with_groq(raw_ocr_text, document_type)
+        
+        return jsonify({
+            "success": True,
+            "request_id": request_id,
+            "document_type": document_type,
+            "extracted_data": extracted_data
+        }), 200
+    
+    except ValueError as ve:
+        return jsonify({"error": f"Parsing error: {str(ve)}"}), 400
+    except Exception as e:
+        return jsonify({"error": f"Groq API error: {str(e)}"}), 500
+
+
+@app.route("/api/ml/fraud-analysis", methods=["POST"])
+def fraud_analysis():
+    """Step 4: Run GNN fraud detection and return anomaly score + top 5 nodes."""
+    request_id = request.json.get("request_id")
+    document_type = request.json.get("document_type")
+    extracted_data = request.json.get("extracted_data")
+    
+    if not document_type or not extracted_data:
+        return jsonify({"error": "Missing document_type or extracted_data"}), 400
+    
+    try:
+        # Extract features based on document type
+        if document_type == "Aadhaar Card":
+            feats = _features_aadhaar(extracted_data)
+            fraud = _run_gnn(feats, aadhaar_scaler, aadhaar_gnn,
+                           aadhaar_db_emb, aadhaar_records, _label_aadhaar)
+        
+        elif document_type == "Pan Card":
+            feats = _features_pan(extracted_data)
+            fraud = _run_gnn(feats, pan_scaler, pan_gnn,
+                           pan_db_emb, pan_records, _label_pan)
+        
+        elif document_type == "Passport":
+            feats = _features_passport(extracted_data)
+            fraud = _run_gnn(feats, passport_scaler, passport_gnn,
+                           passport_db_emb, passport_records, _label_passport)
+        
+        else:
+            return jsonify({"error": f"Unsupported document type: {document_type}"}), 400
+        
+        # Clean up temp image
+        if request_id in temp_image_cache:
+            try:
+                os.unlink(temp_image_cache[request_id])
+                del temp_image_cache[request_id]
+            except:
+                pass
+        
+        return jsonify({
+            "success": True,
+            "request_id": request_id,
+            "document_type": document_type,
+            "anomaly_score": fraud.get("anomaly_score"),
+            "threshold": fraud.get("threshold"),
+            "status": fraud.get("status"),
+            "similar_records": fraud.get("similar_records")
+        }), 200
+    
+    except Exception as e:
+        return jsonify({"error": f"GNN analysis failed: {str(e)}"}), 500
+
+
+# ===========================================================================
+# LEGACY ENDPOINT: Full pipeline (kept for backward compatibility)
+# ===========================================================================
 
 @app.route("/api/ml/classify", methods=["POST"])
 def classify():

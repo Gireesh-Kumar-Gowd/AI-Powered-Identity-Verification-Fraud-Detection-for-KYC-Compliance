@@ -1,6 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import DashboardLayout from "./DashboardLayout";
-import { verifyDocument } from "../services/api";
+import {
+  detectDocumentType,
+  extractOCRText,
+  parseDocument,
+  runFraudAnalysis,
+} from "../services/api";
+import VerificationResult from "./VerificationResult";
 
 const Upload = () => {
  
@@ -10,35 +16,46 @@ const Upload = () => {
 
   const [aiStatus, setAiStatus] = useState("idle");
   const [progress, setProgress] = useState(0);
-  const [scanStep, setScanStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
   const [verificationResult, setVerificationResult] = useState(null);
   const [verificationError, setVerificationError] = useState(null);
 
   const [supportingFiles, setSupportingFiles] = useState([]);
   const supportingInputRef = useRef(null);
 
+  // Step definitions
+  const STEPS = [
+    "Document Type Detection",
+    "OCR Text Extraction",
+    "Data Parsing",
+    "GNN Fraud Analysis",
+    "Final Verification",
+  ];
+
   // Simulate progress while API call is in-flight; stop at 90% until resolved
   useEffect(() => {
     if (aiStatus === "scanning") {
       let currentProgress = 0;
-      
+
       const interval = setInterval(() => {
-        currentProgress += 1.5;
+        currentProgress += 1.2;
         // Cap at 90% — the remaining 10% is filled when API resolves
         if (currentProgress >= 90) {
           clearInterval(interval);
           currentProgress = 90;
         }
         setProgress(Math.floor(currentProgress));
-        if (currentProgress > 20) setScanStep(1);
-        if (currentProgress > 45) setScanStep(2);
-        if (currentProgress > 75) setScanStep(3);
-      }, 80);
+        // Update step based on progress
+        if (currentProgress > 15) setCurrentStep(1);
+        if (currentProgress > 35) setCurrentStep(2);
+        if (currentProgress > 55) setCurrentStep(3);
+        if (currentProgress > 75) setCurrentStep(4);
+      }, 100);
 
       return () => clearInterval(interval);
     } else if (aiStatus === "idle") {
       setProgress(0);
-      setScanStep(0);
+      setCurrentStep(0);
     }
   }, [aiStatus]);
 
@@ -91,21 +108,58 @@ const Upload = () => {
     setAiStatus("scanning");
 
     try {
-      const data = await verifyDocument(mainFile, supportingFiles);
-      // Fill progress to 100% and mark all steps done
-      setScanStep(4);
-      setProgress(100);
-      if (data.success) {
-        setVerificationResult(data.data);
-        setAiStatus("completed");
-      } else {
-        setVerificationError(data.error || "Verification failed");
-        setAiStatus("completed");
+      // Step 1: Detect document type
+      const detectionResult = await detectDocumentType(mainFile);
+      if (!detectionResult.success) {
+        throw new Error(detectionResult.error || "Detection failed");
       }
-    } catch (err) {
-      setScanStep(4);
+      const requestId = detectionResult.request_id;
+      const documentType = detectionResult.document_type;
+      setCurrentStep(1);
+      setProgress(25);
+
+      // Step 2: Extract OCR text
+      const ocrResult = await extractOCRText(requestId, documentType);
+      if (!ocrResult.success) {
+        throw new Error(ocrResult.error || "OCR extraction failed");
+      }
+      const rawOcrText = ocrResult.raw_ocr_text;
+      setCurrentStep(2);
+      setProgress(45);
+
+      // Step 3: Parse document with Groq
+      const parseResult = await parseDocument(requestId, documentType, rawOcrText);
+      if (!parseResult.success) {
+        throw new Error(parseResult.error || "Document parsing failed");
+      }
+      const extractedData = parseResult.extracted_data;
+      setCurrentStep(3);
+      setProgress(65);
+
+      // Step 4: Run GNN fraud analysis
+      const fraudResult = await runFraudAnalysis(requestId, documentType, extractedData);
+      if (!fraudResult.success) {
+        throw new Error(fraudResult.error || "GNN analysis failed");
+      }
+      setCurrentStep(4);
       setProgress(100);
-      setVerificationError("Could not reach server. Please try again.");
+
+      // Combine all results
+      const finalResult = {
+        document_type: documentType,
+        extracted_data: extractedData,
+        anomaly_score: fraudResult.anomaly_score,
+        threshold: fraudResult.threshold,
+        status: fraudResult.status,
+        similar_records: fraudResult.similar_records || [],
+      };
+
+      setVerificationResult(finalResult);
+      setAiStatus("completed");
+    } catch (err) {
+      setCurrentStep(4);
+      setProgress(100);
+      setVerificationError(err.message || "Could not reach server. Please try again.");
       setAiStatus("completed");
     }
   };
@@ -262,115 +316,29 @@ const Upload = () => {
               </div>
 
               <div className="ai-checklist-left">
-                <div className={`check-item ${scanStep >= 1 ? 'done' : 'waiting'}`}>
-                  <span className="check-icon">{scanStep >= 1 ? '✓' : '○'}</span> OCR Extraction
-                </div>
-                <div className={`check-item ${scanStep >= 2 ? 'done' : 'waiting'}`}>
-                  <span className="check-icon">{scanStep >= 2 ? '✓' : '○'}</span> Document Authenticity
-                </div>
-                <div className={`check-item ${scanStep >= 3 ? 'done' : 'waiting'}`}>
-                  <span className="check-icon">{scanStep >= 3 ? '✓' : '○'}</span> Address Match
-                </div>
-                <div className={`check-item ${scanStep >= 4 ? 'done' : 'waiting'}`}>
-                  <span className="check-icon">{scanStep >= 4 ? '✓' : '○'}</span> Fraud Check
-                </div>
+                {STEPS.map((step, idx) => (
+                  <div key={idx} className={`check-item ${currentStep > idx ? 'done' : currentStep === idx ? 'active' : 'waiting'}`}>
+                    <span className="check-icon">
+                      {currentStep > idx ? '✓' : currentStep === idx ? '●' : '○'}
+                    </span>
+                    {step}
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
-          {aiStatus === 'results' && (
-            <div className="result-card fade-in" style={{ width: '100%' }}>
-              {verificationError ? (
-                <div style={{ color: 'var(--danger)', fontSize: '14px', textAlign: 'center', padding: '12px 0' }}>
-                  ⚠️ {verificationError}
-                </div>
-              ) : verificationResult ? (
-                <>
-                  <div
-                    className="result-score-circle"
-                    style={{ background: verificationResult.status === 'Approved' ? 'var(--success)' : 'var(--danger)' }}
-                  >
-                    {Math.round(verificationResult.confidence)}%
-                  </div>
-                  <h3 style={{ fontSize: '15px', color: 'var(--text-primary)', marginBottom: '16px', fontWeight: '600' }}>
-                    {verificationResult.status === 'Approved' ? 'Verification Approved' : 'Verification Rejected'}
-                  </h3>
-
-                  <div className="result-row">
-                    <span className="result-label">Document Type</span>
-                    <span className="result-value">{verificationResult.docType}</span>
-                  </div>
-                  <div className="result-row">
-                    <span className="result-label">Status</span>
-                    <span className={`result-value ${verificationResult.status === 'Approved' ? 'text-success' : 'text-danger'}`}>
-                      {verificationResult.status}
-                    </span>
-                  </div>
-                  <div className="result-row">
-                    <span className="result-label">Document Status</span>
-                    <span className="result-value">{verificationResult.details?.documentStatus || '—'}</span>
-                  </div>
-                  <div className="result-row">
-                    <span className="result-label">Fraud Check</span>
-                    <span className={`result-value ${verificationResult.details?.fraudStatus === 'Normal KYC Record' ? 'text-success' : 'text-danger'}`}>
-                      {verificationResult.details?.fraudStatus || 'Not analyzed'}
-                    </span>
-                  </div>
-                  {verificationResult.details?.anomalyScore != null && (
-                    <div className="result-row">
-                      <span className="result-label">Anomaly Score</span>
-                      <span className="result-value">{verificationResult.details.anomalyScore}</span>
-                    </div>
-                  )}
-                  {verificationResult.details?.ocrData && (
-                    <>
-                      {verificationResult.details.ocrData['Full Name'] && (
-                        <div className="result-row">
-                          <span className="result-label">Name</span>
-                          <span className="result-value">{verificationResult.details.ocrData['Full Name']}</span>
-                        </div>
-                      )}
-                      {verificationResult.details.ocrData['Date/Year of Birth'] && (
-                        <div className="result-row">
-                          <span className="result-label">Date of Birth</span>
-                          <span className="result-value">{verificationResult.details.ocrData['Date/Year of Birth']}</span>
-                        </div>
-                      )}
-                      {verificationResult.details.ocrData['Gender'] && (
-                        <div className="result-row">
-                          <span className="result-label">Gender</span>
-                          <span className="result-value">{verificationResult.details.ocrData['Gender']}</span>
-                        </div>
-                      )}
-                      {verificationResult.details.ocrData['Aadhaar Number'] && (
-                        <div className="result-row">
-                          <span className="result-label">Aadhaar No.</span>
-                          <span className="result-value">{verificationResult.details.ocrData['Aadhaar Number']}</span>
-                        </div>
-                      )}
-                      {verificationResult.details.ocrData['PAN Number'] && (
-                        <div className="result-row">
-                          <span className="result-label">PAN No.</span>
-                          <span className="result-value">{verificationResult.details.ocrData['PAN Number']}</span>
-                        </div>
-                      )}
-                      {verificationResult.details.ocrData['Passport Number'] && (
-                        <div className="result-row">
-                          <span className="result-label">Passport No.</span>
-                          <span className="result-value">{verificationResult.details.ocrData['Passport Number']}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                  {verificationResult.details?.ocrData?.['Date of Birth'] && (
-                    <div className="result-row">
-                      <span className="result-label">Date of Birth</span>
-                      <span className="result-value">{verificationResult.details.ocrData['Date of Birth']}</span>
-                    </div>
-                  )}
-                </>
-              ) : null}
-            </div>
+          {aiStatus === 'completed' && (
+            verificationError ? (
+              <div className="error-message" style={{ color: 'var(--danger)', fontSize: '14px', textAlign: 'center', padding: '16px', background: '#fee2e2', borderRadius: '8px', marginTop: '16px' }}>
+                ⚠️ {verificationError}
+              </div>
+            ) : (
+              <VerificationResult 
+                result={verificationResult}
+                onStartNew={handleRemoveFile}
+              />
+            )
           )}
 
           <div style={{ width: "100%", marginTop: "auto" }}>
@@ -382,16 +350,6 @@ const Upload = () => {
             {aiStatus === 'scanning' && (
               <button className="btn-primary" disabled style={{ background: 'var(--border-soft)', color: 'var(--text-muted)' }}>
                 Processing...
-              </button>
-            )}
-            {aiStatus === 'completed' && (
-              <button className="btn-primary" onClick={() => setAiStatus("results")}>
-                View Final Results
-              </button>
-            )}
-            {aiStatus === 'results' && (
-              <button className="btn-primary" style={{ background: 'var(--bg-main)', color: 'var(--text-primary)', border: '1px solid var(--border-soft)' }} onClick={handleRemoveFile}>
-                Start New Verification
               </button>
             )}
           </div>
