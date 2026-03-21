@@ -2,9 +2,9 @@ const mongoose = require('mongoose');
 
 const verificationSchema = new mongoose.Schema({
   user_id: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'User',
-    required: true
+    type: String,
+    required: false,
+    default: 'admin'
   },
   user_name: {
     type: String,

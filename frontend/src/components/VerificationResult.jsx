@@ -1,10 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./VerificationResult.css";
 
-const VerificationResult = ({ result, onStartNew }) => {
+const VerificationResult = ({ result, onStartNew, onVerificationSaved }) => {
+  const navigate = useNavigate();
+  const [savingStatus, setSavingStatus] = useState(null); // 'loading', 'success', 'error'
+  const [selectedDecision, setSelectedDecision] = useState(null); // 'Approved', 'Suspicious', 'Rejected', 'Non-KYC'
+  
   if (!result) return null;
 
-  const { document_type, extracted_data, anomaly_score, status, similar_records } = result;
+  const { is_non_kyc, document_type, extracted_data, anomaly_score, status, similar_records } = result;
   
   // Determine status based on anomaly score
   const getApprovalStatus = (score) => {
@@ -59,6 +64,59 @@ const VerificationResult = ({ result, onStartNew }) => {
         ];
       default:
         return [];
+    }
+  };
+
+  const handleManualDecision = async (decision) => {
+    setSavingStatus('loading');
+    setSelectedDecision(decision);
+
+    try {
+      console.log('🔵 Sending manual decision:', decision);
+      console.log('📦 Request body:', {
+        user_name: 'Admin User',
+        document_type,
+        anomaly_score,
+        status: decision,
+        extracted_data,
+        similar_nodes: similar_records?.length || 0
+      });
+
+      const response = await fetch('http://localhost:5000/api/kyc/verifications/manual-decision', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_name: 'Admin User',
+          document_type,
+          anomaly_score,
+          status: decision,
+          extracted_data,
+          similar_nodes: similar_records || []
+        })
+      });
+
+      console.log('📨 Response status:', response.status);
+      const result = await response.json();
+      console.log('📨 Response body:', result);
+
+      if (response.ok) {
+        console.log('✅ Manual decision saved:', decision);
+        setSavingStatus('success');
+        
+        // Navigate to history page after 2 seconds to show success message
+        setTimeout(() => {
+          navigate('/chat-history', { state: { refreshData: true } });
+        }, 2000);
+      } else {
+        console.error('❌ Failed to save manual decision:', result.error);
+        setSavingStatus('error');
+      }
+    } catch (error) {
+      console.error('❌ Error saving manual decision:', error.message);
+      console.error('Stack trace:', error);
+      setSavingStatus('error');
     }
   };
 
@@ -170,6 +228,66 @@ const VerificationResult = ({ result, onStartNew }) => {
                 : "⚠ Document verification SUSPICIOUS - Potential fraud detected"}
             </p>
           </div>
+        </div>
+
+        {/* Manual Decision Buttons */}
+        <div className="result-section decision-buttons-section">
+          <h4>Manual Review Decision</h4>
+          
+          {is_non_kyc ? (
+            // Non-KYC Document: Show only 1 button
+            <div className="decision-buttons">
+              <button
+                className="btn-decision btn-non-kyc"
+                onClick={() => handleManualDecision('Non-KYC')}
+                disabled={savingStatus === 'loading' || selectedDecision !== null}
+              >
+                ✗ Mark as Non-KYC
+              </button>
+            </div>
+          ) : (
+            // Regular Documents: Show 3 buttons
+            <div className="decision-buttons">
+              <button
+                className="btn-decision btn-approve"
+                onClick={() => handleManualDecision('Approved')}
+                disabled={savingStatus === 'loading' || selectedDecision !== null}
+              >
+                ✓ Approve
+              </button>
+              <button
+                className="btn-decision btn-suspicious"
+                onClick={() => handleManualDecision('Suspicious')}
+                disabled={savingStatus === 'loading' || selectedDecision !== null}
+              >
+                ⚠ Suspicious
+              </button>
+              <button
+                className="btn-decision btn-reject"
+                onClick={() => handleManualDecision('Rejected')}
+                disabled={savingStatus === 'loading' || selectedDecision !== null}
+              >
+                ✗ Reject
+              </button>
+            </div>
+          )}
+
+          {/* Confirmation Message */}
+          {savingStatus === 'loading' && (
+            <div className="confirmation-message loading">
+              Saving verification...
+            </div>
+          )}
+          {savingStatus === 'success' && (
+            <div className="confirmation-message success">
+              ✓ Verification saved as: {selectedDecision}
+            </div>
+          )}
+          {savingStatus === 'error' && (
+            <div className="confirmation-message error">
+              ✗ Failed to save verification. Please try again.
+            </div>
+          )}
         </div>
 
         {/* Action Button */}

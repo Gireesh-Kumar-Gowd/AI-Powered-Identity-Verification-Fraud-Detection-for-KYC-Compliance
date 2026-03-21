@@ -110,9 +110,10 @@ const Upload = () => {
         verificationData.user_name = 'Admin User';
       }
 
-      console.log('Saving verification:', verificationData);
+      console.log('📤 Saving verification to MongoDB:', verificationData);
       
-      const response = await fetch('/api/kyc/verifications', {
+      const url = 'http://localhost:5000/api/kyc/verifications';
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -120,17 +121,17 @@ const Upload = () => {
         body: JSON.stringify(verificationData)
       });
 
-      const responseText = await response.text();
-      console.log('Save response status:', response.status);
-      console.log('Save response:', responseText);
-
+      console.log('📥 Save response status:', response.status);
+      
       if (!response.ok) {
-        console.error(`Failed to save verification: ${response.status} ${responseText}`);
+        const errorText = await response.text();
+        console.error(`❌ Failed to save verification: ${response.status} ${errorText}`);
       } else {
-        console.log('✓ Verification saved to MongoDB successfully');
+        const result = await response.json();
+        console.log('✅ Verification saved to MongoDB successfully:', result);
       }
     } catch (error) {
-      console.error('Error saving verification to MongoDB:', error);
+      console.error('❌ Error saving verification to MongoDB:', error);
     }
   };
 

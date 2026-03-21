@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { verifyDocuments, getHistory, getAllVerifications, getVerificationStats, saveVerification } = require('../controllers/kyc');
+const { verifyDocuments, getHistory, getAllVerifications, getVerificationStats, saveVerification, saveManualDecision, resetVerifications } = require('../controllers/kyc');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -36,12 +36,14 @@ const upload = multer({
   }
 });
 
-// New endpoints - no authentication required (for demo/public access)
+// ✅ Public endpoints - no authentication required (for demo/public access)
 router.get('/verifications', getAllVerifications);
 router.get('/verifications/stats', getVerificationStats);
 router.post('/verifications', saveVerification);
+router.post('/verifications/manual-decision', saveManualDecision);
+router.post('/verifications/reset', resetVerifications); // Development only
 
-// Protected routes
+// ✅ Protected routes
 router.use(protect);
 
 router.post('/verify', upload.fields([

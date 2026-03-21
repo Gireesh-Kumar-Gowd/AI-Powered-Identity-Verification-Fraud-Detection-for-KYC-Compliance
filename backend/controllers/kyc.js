@@ -3,6 +3,7 @@ const fs = require('fs');
 const Verification = require('../models/Verification');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5001';
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 exports.verifyDocuments = async (req, res, next) => {
   try {
@@ -116,17 +117,22 @@ exports.getHistory = async (req, res, next) => {
 
 exports.getAllVerifications = async (req, res, next) => {
   try {
+    console.log('🔵 getAllVerifications endpoint called');
+    console.log('Query parameters:', req.query);
+    
     const { status, docType, days } = req.query;
     let query = {};
 
     // Filter by status
     if (status && status !== 'All Status') {
       query.status = status;
+      console.log('Filtering by status:', status);
     }
 
     // Filter by document type
     if (docType && docType !== 'All Documents') {
       query.document_type = docType;
+      console.log('Filtering by document type:', docType);
     }
 
     // Filter by date range
@@ -135,18 +141,30 @@ exports.getAllVerifications = async (req, res, next) => {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysNum);
       query.submitted_date = { $gte: cutoffDate };
+      console.log('Filtering by date range:', daysNum, 'days');
     }
 
+    console.log('Query object:', JSON.stringify(query));
+    
     const verifications = await Verification.find(query)
       .sort('-submitted_date')
-      .limit(1000);
+      .limit(1000)
+      .lean();
 
+    console.log(`✅ Verifications found: ${verifications.length}`);
+    if (verifications.length > 0) {
+      console.log(`First record:`, JSON.stringify(verifications[0], null, 2));
+    } else {
+      console.log('📭 No verifications found');
+    }
+    
     res.status(200).json({
       success: true,
       count: verifications.length,
       data: verifications
     });
   } catch (err) {
+    console.error('❌ Error in getAllVerifications:', err.message);
     res.status(500).json({
       success: false,
       error: err.message
@@ -156,11 +174,15 @@ exports.getAllVerifications = async (req, res, next) => {
 
 exports.getVerificationStats = async (req, res, next) => {
   try {
+    console.log('🔵 getVerificationStats endpoint called');
+    
     const total = await Verification.countDocuments();
     const approved = await Verification.countDocuments({ status: 'Approved' });
     const suspicious = await Verification.countDocuments({ status: 'Suspicious' });
     const rejected = await Verification.countDocuments({ status: 'Rejected' });
     const nonKyc = await Verification.countDocuments({ status: 'Non-KYC' });
+
+    console.log(`✅ Stats - Total: ${total}, Approved: ${approved}, Suspicious: ${suspicious}, Rejected: ${rejected}, NonKYC: ${nonKyc}`);
 
     res.status(200).json({
       success: true,
@@ -173,6 +195,7 @@ exports.getVerificationStats = async (req, res, next) => {
       }
     });
   } catch (err) {
+    console.error('❌ Error in getVerificationStats:', err.message);
     res.status(500).json({
       success: false,
       error: err.message
@@ -182,15 +205,21 @@ exports.getVerificationStats = async (req, res, next) => {
 
 exports.saveVerification = async (req, res, next) => {
   try {
+    console.log('🔵 saveVerification endpoint called');
+    console.log('Request body:', req.body);
+    
     const { user_id, user_name, document_type, anomaly_score, status, extracted_data, similar_nodes } = req.body;
 
     if (!user_id || !user_name || !document_type) {
+      console.error('❌ Missing required fields:', { user_id, user_name, document_type });
       return res.status(400).json({
         success: false,
         error: 'Missing required fields: user_id, user_name, document_type'
       });
     }
 
+    console.log('✅ All required fields present, creating verification...');
+    
     const verification = await Verification.create({
       user_id,
       user_name,
@@ -202,11 +231,96 @@ exports.saveVerification = async (req, res, next) => {
       similar_nodes: similar_nodes || []
     });
 
+    console.log('✅ Verification saved successfully:', verification._id);
+    
     res.status(201).json({
       success: true,
       data: verification
     });
   } catch (err) {
+    console.error('❌ Error in saveVerification:', err.message);
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+};
+
+exports.saveManualDecision = async (req, res, next) => {
+  try {
+    console.log('🔵 saveManualDecision endpoint called');
+    console.log('📨 Request body:', JSON.stringify(req.body, null, 2));
+    
+    const { user_name, document_type, anomaly_score, status, extracted_data, similar_nodes } = req.body;
+
+    if (!user_name || !document_type || !status) {
+      console.error('❌ Missing required fields for manual decision:', { user_name, document_type, status });
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: user_name, document_type, status'
+      });
+    }
+
+    console.log('✅ All required fields present for manual decision');
+    console.log('📦 Creating verification with status:', status);
+    
+    const verification = await Verification.create({
+      user_id: 'admin',
+      user_name,
+      document_type,
+      submitted_date: new Date(),
+      anomaly_score: anomaly_score || null,
+      status,
+      extracted_data: extracted_data || {},
+      similar_nodes: similar_nodes || []
+    });
+
+    console.log('✅ Manual decision saved successfully:', verification._id);
+    console.log('📊 Document details:', { 
+      user_name: verification.user_name,
+      document_type: verification.document_type,
+      status: verification.status,
+      anomaly_score: verification.anomaly_score
+    });
+    
+    res.status(201).json({
+      success: true,
+      verification_id: verification._id,
+      data: verification
+    });
+  } catch (err) {
+    console.error('❌ Error in saveManualDecision:', err.message);
+    console.error('📋 Full error:', err);
+    console.error('🗄️ MongoDB connection status:', Verification.db?.readyState);
+    res.status(500).json({
+      success: false,
+      error: err.message,
+      details: NODE_ENV === 'development' ? err.toString() : 'Internal server error'
+    });
+  }
+};
+
+// Reset verification data (development only)
+exports.resetVerifications = async (req, res, next) => {
+  try {
+    if (NODE_ENV !== 'development') {
+      return res.status(403).json({
+        success: false,
+        error: 'Reset only available in development mode'
+      });
+    }
+
+    console.log('🔄 Resetting verifications collection...');
+    const result = await Verification.deleteMany({});
+    console.log(`✅ Deleted ${result.deletedCount} documents`);
+
+    res.status(200).json({
+      success: true,
+      message: `Reset complete. Deleted ${result.deletedCount} documents`,
+      deleted: result.deletedCount
+    });
+  } catch (err) {
+    console.error('❌ Error resetting verifications:', err.message);
     res.status(500).json({
       success: false,
       error: err.message

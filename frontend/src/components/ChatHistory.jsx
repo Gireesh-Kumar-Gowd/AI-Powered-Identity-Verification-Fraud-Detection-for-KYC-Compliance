@@ -1,25 +1,37 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import DashboardLayout from "./DashboardLayout";
 
 const ChatHistory = () => {
+  const location = useLocation();
   const [verifications, setVerifications] = useState([]);
-  const [stats, setStats] = useState({ total: 0, approved: 0, suspicious: 0, rejected: 0 });
+  const [stats, setStats] = useState({ total: 0, approved: 0, suspicious: 0, rejected: 0, nonKyc: 0 });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [dateFilter, setDateFilter] = useState("All Time");
   const [docFilter, setDocFilter] = useState("All Documents");
 
+  // Fetch data on mount and when filters change
   useEffect(() => {
     fetchVerifications();
     fetchStats();
   }, [statusFilter, dateFilter, docFilter]);
 
+  // Refresh when returning from decision save
+  useEffect(() => {
+    if (location.state?.refreshData) {
+      console.log('🔄 Refreshing data after verification save...');
+      fetchVerifications();
+      fetchStats();
+    }
+  }, [location]);
+
   const fetchVerifications = async () => {
     try {
       setLoading(true);
       
-      let url = '/api/kyc/verifications';
+      let url = 'http://localhost:5000/api/kyc/verifications';
       const params = new URLSearchParams();
       
       if (statusFilter !== 'All Status') params.append('status', statusFilter);
@@ -31,18 +43,22 @@ const ChatHistory = () => {
       
       if (params.toString()) url += '?' + params.toString();
 
+      console.log('📥 Fetching from:', url);
       const response = await fetch(url);
 
+      console.log('Response status:', response.status);
+      
       if (response.ok) {
         const result = await response.json();
-        console.log('Fetched verifications:', result.data);
+        console.log('✅ Fetched verifications:', result.data);
         setVerifications(result.data || []);
       } else {
-        console.error('Failed to fetch verifications:', response.status);
+        const errorText = await response.text();
+        console.error('❌ Failed to fetch verifications:', response.status, errorText);
         setVerifications([]);
       }
     } catch (error) {
-      console.error('Error fetching verifications:', error);
+      console.error('❌ Error fetching verifications:', error);
       setVerifications([]);
     } finally {
       setLoading(false);
@@ -51,15 +67,22 @@ const ChatHistory = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/kyc/verifications/stats');
+      const url = 'http://localhost:5000/api/kyc/verifications/stats';
+      console.log('📥 Fetching stats from:', url);
+      const response = await fetch(url);
 
+      console.log('Stats response status:', response.status);
+      
       if (response.ok) {
         const result = await response.json();
-        console.log('Fetched stats:', result.data);
+        console.log('✅ Fetched stats:', result.data);
         setStats(result.data || { total: 0, approved: 0, suspicious: 0, rejected: 0 });
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Failed to fetch stats:', response.status, errorText);
       }
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error('❌ Error fetching stats:', error);
     }
   };
 
@@ -84,7 +107,10 @@ const ChatHistory = () => {
   };
 
   const filteredData = verifications.filter((row) => {
-    return row.user_name && row.user_name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = row.user_name && row.user_name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'All Status' || row.status === statusFilter;
+    const matchesDoc = docFilter === 'All Documents' || row.document_type === docFilter;
+    return matchesSearch && matchesStatus && matchesDoc;
   });
 
   return (
@@ -149,6 +175,20 @@ const ChatHistory = () => {
             <div className="metric-value">{stats.rejected}</div>
           </div>
         </div>
+
+        <div className="metric-card">
+          <div className="metric-icon red">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          </div>
+          <div className="metric-info">
+            <h4>Non-KYC</h4>
+            <div className="metric-value">{stats.nonKyc || 0}</div>
+          </div>
+        </div>
       </div>
 
       <div className="filter-bar">
@@ -188,7 +228,7 @@ const ChatHistory = () => {
                 <th>User Name</th>
                 <th>Document Type</th>
                 <th>Submitted Date</th>
-                <th>AI Score</th>
+                <th>Anomaly Score</th>
                 <th>Status</th>
               </tr>
             </thead>

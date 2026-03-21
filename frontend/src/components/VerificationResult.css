@@ -345,6 +345,113 @@
   line-height: 1.5;
 }
 
+/* Decision Buttons Section */
+.decision-buttons-section {
+  background: #f0f9ff;
+  border-top: 2px solid #bfdbfe;
+}
+
+.decision-buttons-section h4 {
+  margin: 0 0 1rem 0;
+  font-size: 0.95rem;
+  color: #1f2937;
+}
+
+.decision-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.decision-buttons.single {
+  grid-template-columns: 1fr;
+}
+
+.btn-decision {
+  padding: 0.875rem 1rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-decision:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-decision:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-approve {
+  background-color: #10b981;
+  color: white;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+.btn-suspicious {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.btn-suspicious:hover:not(:disabled) {
+  background-color: #d97706;
+}
+
+.btn-reject {
+  background-color: #ef4444;
+  color: white;
+}
+
+.btn-reject:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+.btn-non-kyc {
+  background-color: #8b5cf6;
+  color: white;
+}
+
+.btn-non-kyc:hover:not(:disabled) {
+  background-color: #7c3aed;
+}
+
+.confirmation-message {
+  padding: 1rem;
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-top: 1rem;
+}
+
+.confirmation-message.loading {
+  background-color: #dbeafe;
+  color: #0369a1;
+}
+
+.confirmation-message.success {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.confirmation-message.error {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .status-circle {
@@ -365,5 +472,13 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+  }
+
+  .decision-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  .btn-decision {
+    width: 100%;
   }
 }
