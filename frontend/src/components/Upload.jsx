@@ -7,6 +7,7 @@ import {
   runFraudAnalysis,
 } from "../services/api";
 import VerificationResult from "./VerificationResult";
+import NonKYCResult from "./NonKYCResult";
 
 const Upload = () => {
  
@@ -101,6 +102,38 @@ const Upload = () => {
     if (supportingInputRef.current) supportingInputRef.current.value = "";
   };
 
+  const saveVerificationToMongoDB = async (verificationData) => {
+    try {
+      // If user data isn't in localStorage, use hardcoded admin user (for demo)
+      if (!verificationData.user_id) {
+        verificationData.user_id = 'admin'; // temporary ID
+        verificationData.user_name = 'Admin User';
+      }
+
+      console.log('Saving verification:', verificationData);
+      
+      const response = await fetch('/api/kyc/verifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(verificationData)
+      });
+
+      const responseText = await response.text();
+      console.log('Save response status:', response.status);
+      console.log('Save response:', responseText);
+
+      if (!response.ok) {
+        console.error(`Failed to save verification: ${response.status} ${responseText}`);
+      } else {
+        console.log('✓ Verification saved to MongoDB successfully');
+      }
+    } catch (error) {
+      console.error('Error saving verification to MongoDB:', error);
+    }
+  };
+
   const handleStartVerification = async () => {
     if (!mainFile) return;
     setVerificationResult(null);
@@ -117,6 +150,33 @@ const Upload = () => {
       const documentType = detectionResult.document_type;
       setCurrentStep(1);
       setProgress(25);
+
+      // Check if document is valid KYC document
+      const validKYCDocuments = ["Aadhaar Card", "Pan Card", "Passport"];
+      if (!validKYCDocuments.includes(documentType)) {
+        // Non-KYC document detected - stop pipeline and save to MongoDB
+        const nonKYCResult = {
+          is_non_kyc: true,
+          document_type: documentType,
+        };
+        
+        // Save non-KYC verification to MongoDB
+        await saveVerificationToMongoDB({
+          user_id: 'admin',
+          user_name: 'Admin User',
+          document_type: documentType,
+          anomaly_score: null,
+          status: 'Non-KYC',
+          extracted_data: {},
+          similar_nodes: []
+        });
+
+        setVerificationResult(nonKYCResult);
+        setCurrentStep(1);
+        setProgress(100);
+        setAiStatus("completed");
+        return;
+      }
 
       // Step 2: Extract OCR text
       const ocrResult = await extractOCRText(requestId, documentType);
@@ -146,6 +206,7 @@ const Upload = () => {
 
       // Combine all results
       const finalResult = {
+        is_non_kyc: false,
         document_type: documentType,
         extracted_data: extractedData,
         anomaly_score: fraudResult.anomaly_score,
@@ -153,6 +214,18 @@ const Upload = () => {
         status: fraudResult.status,
         similar_records: fraudResult.similar_records || [],
       };
+
+
+      // Save verification to MongoDB
+      await saveVerificationToMongoDB({
+        user_id: 'admin',
+        user_name: 'Admin User',
+        document_type: documentType,
+        anomaly_score: fraudResult.anomaly_score,
+        status: fraudResult.status,
+        extracted_data: extractedData,
+        similar_nodes: fraudResult.similar_records || []
+      });
 
       setVerificationResult(finalResult);
       setAiStatus("completed");
@@ -179,39 +252,27 @@ const Upload = () => {
         <p>Upload identity documents for AI-powered verification</p>
       </div>
 
-      <div className="upload-grid">
+      <div className="kyc-layout-container">
         
-        <div className="upload-col">
+        {/* LEFT SIDE (60%) - Upload Box or Results */}
+        <div className="kyc-left-panel">
           
-    
-          <div className="dash-card">
-            <div className="card-label">
-              <span>Identity Document <span style={{ color: "var(--danger)" }}>*</span></span>
-            </div>
-            
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              accept=".jpg,.jpeg,.png,.pdf" 
-              style={{ display: "none" }} 
-              disabled={aiStatus !== 'idle'} 
-            />
-
-            {mainFile ? (
-              <div className="file-chip">
-                <div className="file-chip-icon">✓</div>
-                <div className="file-chip-info">
-                  <div className="file-chip-name">{mainFile.name}</div>
-                  <div className="file-chip-meta">{formatFileSize(mainFile.size)} • Ready to process</div>
-                </div>
-                {aiStatus === 'idle' && (
-                  <button className="btn-remove" onClick={handleRemoveFile}>
-                    ✕ Remove file
-                  </button>
-                )}
+          {/* Upload Box - Shown when no file selected or during idle state */}
+          {!mainFile && (
+            <div className="dash-card upload-card-full">
+              <div className="card-label">
+                <span>Identity Document <span style={{ color: "var(--danger)" }}>*</span></span>
               </div>
-            ) : (
+              
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                accept=".jpg,.jpeg,.png,.pdf" 
+                style={{ display: "none" }} 
+                disabled={aiStatus !== 'idle'} 
+              />
+              
               <div 
                 className="drop-zone" 
                 onDragOver={handleDragOver}
@@ -229,128 +290,124 @@ const Upload = () => {
                   PNG, JPG or PDF • Max 5MB
                 </div>
               </div>
-            )}
-          </div>
-
-        
-          <div className="dash-card" style={{ opacity: aiStatus !== 'idle' ? 0.5 : 1, pointerEvents: aiStatus !== 'idle' ? 'none' : 'auto' }}>
-            <div className="card-label"><span>Supporting Documents</span></div>
-            
-            <input 
-              type="file" 
-              multiple 
-              ref={supportingInputRef} 
-              onChange={handleSupportingChange} 
-              style={{ display: "none" }} 
-            />
-
-            <div className="drop-zone" onClick={() => supportingInputRef.current.click()}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: '28px', height: '28px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <line x1="10" y1="9" x2="8" y2="9"></line>
-              </svg>
-              <div style={{ fontSize: "14px", fontWeight: "500", marginBottom: "4px", color: "var(--text-primary)" }}>Upload supporting docs</div>
-              <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>Address proof, utility bills, etc.</div>
             </div>
+          )}
 
-           
-            {supportingFiles.length > 0 && (
-              <div style={{ marginTop: '12px' }}>
-                {supportingFiles.map((file, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-main)', padding: '8px 12px', borderRadius: '8px', marginBottom: '6px', fontSize: '13px', border: '1px solid var(--border-soft)' }}>
-                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '80%' }}>📎 {file.name}</span>
-                    <button onClick={() => removeSupportingFile(idx)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+          {/* Selected Document Info + Results - Shown after file is selected */}
+          {mainFile && (
+            <>
+              {/* Selected Document Card */}
+              <div className="dash-card">
+                <div className="card-label"><span>Selected Document</span></div>
+                <div className="file-chip">
+                  <div className="file-chip-icon">✓</div>
+                  <div className="file-chip-info">
+                    <div className="file-chip-name">{mainFile.name}</div>
+                    <div className="file-chip-meta">{formatFileSize(mainFile.size)} • Ready to process</div>
                   </div>
-                ))}
+                  {aiStatus === 'idle' && (
+                    <button className="btn-remove" onClick={handleRemoveFile}>
+                      ✕ Remove file
+                    </button>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Start Button - Shown when idle with file selected */}
+              {aiStatus === 'idle' && (
+                <button className="btn-primary" onClick={handleStartVerification}>
+                  Start AI Verification
+                </button>
+              )}
+
+              {/* Error Message - Shown on completion if error */}
+              {aiStatus === 'completed' && verificationError && (
+                <div className="dash-card" style={{ background: '#fee2e2', borderLeft: '4px solid #dc2626' }}>
+                  <div style={{ color: '#dc2626', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '18px' }}>⚠️</span>
+                    <span>{verificationError}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Results - Shown on completion if no error */}
+              {aiStatus === 'completed' && !verificationError && (
+                <>
+                  {verificationResult?.is_non_kyc ? (
+                    <NonKYCResult />
+                  ) : (
+                    <VerificationResult 
+                      result={verificationResult}
+                      onStartNew={handleRemoveFile}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* Verify Another Button - Shown on completion */}
+              {aiStatus === 'completed' && (
+                <button className="btn-primary" onClick={handleRemoveFile}>
+                  Verify Another Document
+                </button>
+              )}
+            </>
+          )}
         </div>
 
-       
-        <div className="dash-card ai-panel ai-panel-centered">
-          
-          <div className={`ai-icon-large ${aiStatus === 'completed' || aiStatus === 'results' ? 'success' : aiStatus === 'scanning' ? 'scanning' : ''}`}>
-            {aiStatus === 'idle' && (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
-            )}
+        {/* RIGHT SIDE (40%) - STATIC Progress Checklist (NEVER CHANGES) */}
+        <div className="kyc-right-panel">
+          <div className="dash-card progress-card-static">
+            <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.1rem', fontWeight: '600', color: 'var(--text-primary)' }}>
+              Verification Progress
+            </h3>
+            
+            <div className="ai-checklist">
+              {STEPS.map((step, idx) => {
+                let stepStatus = 'waiting';
+                if (aiStatus === 'idle') stepStatus = 'waiting';
+                else if (currentStep > idx) stepStatus = 'done';
+                else if (currentStep === idx) stepStatus = 'active';
+                else stepStatus = 'waiting';
+                
+                // Mark remaining steps as skipped for non-KYC documents
+                if (verificationResult?.is_non_kyc && idx > 0) {
+                  stepStatus = 'skipped';
+                }
+
+                return (
+                  <div key={idx} className={`check-item ${stepStatus}`}>
+                    <span className="check-icon">
+                      {stepStatus === 'done' ? '✓' : stepStatus === 'active' ? '●' : stepStatus === 'skipped' ? '✗' : '○'}
+                    </span>
+                    {step}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Progress Bar - Shown during scanning */}
             {aiStatus === 'scanning' && (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="spin-anim"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-8.31l5.67-5.67"></path></svg>
-            )}
-            {(aiStatus === 'completed' || aiStatus === 'results') && (
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            )}
-          </div>
-
-          <h2 className="ai-title">
-            {aiStatus === 'idle' && 'AI Verification Engine'}
-            {aiStatus === 'scanning' && 'Analyzing Documents'}
-            {aiStatus === 'completed' && 'Verification Complete'}
-            {aiStatus === 'results' && 'Verification Complete'}
-          </h2>
-          <p className="ai-subtitle">
-            {aiStatus === 'idle' && 'Upload documents to enable the AI engine.'}
-            {aiStatus === 'scanning' && 'Please wait while AI verifies identity'}
-            {aiStatus === 'completed' && 'Documents analyzed successfully'}
-            {aiStatus === 'results' && 'Documents analyzed successfully'}
-          </p>
-
-          {(aiStatus === 'scanning' || aiStatus === 'completed') && (
-            <div style={{ width: '100%' }}>
-              <div className="ai-progress-wrapper">
+              <div style={{ marginTop: '1.5rem' }}>
                 <div className="progress-labels">
                   <span>Processing...</span>
-                  <span style={{ color: aiStatus === 'completed' ? 'var(--success)' : 'var(--accent)', fontWeight: '600' }}>
+                  <span style={{ color: 'var(--accent)', fontWeight: '600' }}>
                     {progress}%
                   </span>
                 </div>
                 <div className="scan-progress">
                   <div 
-                    className={`scan-progress-fill ${aiStatus === 'completed' ? 'completed' : ''}`} 
+                    className="scan-progress-fill" 
                     style={{ width: `${progress}%` }}
                   ></div>
                 </div>
               </div>
-
-              <div className="ai-checklist-left">
-                {STEPS.map((step, idx) => (
-                  <div key={idx} className={`check-item ${currentStep > idx ? 'done' : currentStep === idx ? 'active' : 'waiting'}`}>
-                    <span className="check-icon">
-                      {currentStep > idx ? '✓' : currentStep === idx ? '●' : '○'}
-                    </span>
-                    {step}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {aiStatus === 'completed' && (
-            verificationError ? (
-              <div className="error-message" style={{ color: 'var(--danger)', fontSize: '14px', textAlign: 'center', padding: '16px', background: '#fee2e2', borderRadius: '8px', marginTop: '16px' }}>
-                ⚠️ {verificationError}
-              </div>
-            ) : (
-              <VerificationResult 
-                result={verificationResult}
-                onStartNew={handleRemoveFile}
-              />
-            )
-          )}
-
-          <div style={{ width: "100%", marginTop: "auto" }}>
-            {aiStatus === 'idle' && (
-              <button className="btn-primary" onClick={handleStartVerification} disabled={!mainFile}>
-                Start AI Verification
-              </button>
             )}
-            {aiStatus === 'scanning' && (
-              <button className="btn-primary" disabled style={{ background: 'var(--border-soft)', color: 'var(--text-muted)' }}>
-                Processing...
-              </button>
+
+            {/* Complete Indicator - Shown after completion */}
+            {aiStatus === 'completed' && (
+              <div style={{ marginTop: '1.5rem', padding: '0.875rem', background: '#dcfce7', borderRadius: '6px', color: '#166534', fontSize: '14px', textAlign: 'center', fontWeight: '500', border: '1px solid #bbf7d0' }}>
+                ✓ Verification Process Complete
+              </div>
             )}
           </div>
         </div>

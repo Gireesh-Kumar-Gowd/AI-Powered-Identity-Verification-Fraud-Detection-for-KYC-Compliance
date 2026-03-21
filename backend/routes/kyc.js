@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { verifyDocuments, getHistory } = require('../controllers/kyc');
+const { verifyDocuments, getHistory, getAllVerifications, getVerificationStats, saveVerification } = require('../controllers/kyc');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
@@ -36,7 +36,13 @@ const upload = multer({
   }
 });
 
-router.use(protect); // Protect all routes
+// New endpoints - no authentication required (for demo/public access)
+router.get('/verifications', getAllVerifications);
+router.get('/verifications/stats', getVerificationStats);
+router.post('/verifications', saveVerification);
+
+// Protected routes
+router.use(protect);
 
 router.post('/verify', upload.fields([
   { name: 'identity', maxCount: 1 },

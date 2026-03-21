@@ -337,7 +337,7 @@ p, td { font-size: 14px; font-weight: 400; color: var(--text-muted); margin: 0; 
 
 .step-arrow { color: var(--border-hover); }
 
-.upload-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 32px; }
+.upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
 .upload-col { display: flex; flex-direction: column; gap: 32px; }
 
 
@@ -411,7 +411,16 @@ p, td { font-size: 14px; font-weight: 400; color: var(--text-muted); margin: 0; 
 .status-pill { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; }
 .status-pill.approved { background: var(--success-soft); color: var(--success); }
 .status-pill.pending { background: var(--warning-soft); color: var(--warning); }
+.status-pill.suspicious { background: var(--warning-soft); color: var(--warning); }
 .status-pill.rejected { background: var(--danger-soft); color: var(--danger); }
+.status-pill.non-kyc { background: var(--danger-soft); color: var(--danger); }
+
+.status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.status-dot.approved { background: var(--success); }
+.status-dot.pending { background: var(--warning); }
+.status-dot.suspicious { background: var(--warning); }
+.status-dot.rejected { background: var(--danger); }
+.status-dot.non-kyc { background: var(--danger); }
 
 .confidence-wrapper { display: flex; align-items: center; gap: 12px; }
 .confidence-bar-bg { width: 64px; height: 6px; background: var(--border-soft); border-radius: 4px; overflow: hidden; }

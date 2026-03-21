@@ -45,6 +45,7 @@ PASSPORT_SCALER_PATH = os.path.join(MODELS_DIR, "passport_scaler.pkl")
 PASSPORT_EMB_PATH    = os.path.join(MODELS_DIR, "passport_embeddings.pt")
 PASSPORT_RECORDS_PATH = os.path.join(MODELS_DIR, "passport_records.pkl")
 
+
 # ---------------------------------------------------------------------------
 # Load environment variables
 # ---------------------------------------------------------------------------
@@ -77,6 +78,11 @@ Return ONLY the JSON object, no additional text.""",
     "Passport": """Extract the following information from the Passport OCR text and return ONLY valid JSON:
 {{"surname": "", "given_name": "", "nationality": "", "sex": "", "date_of_birth": "", "place_of_birth": "", "place_of_issue": ""}}
 
+IMPORTANT for sex field:
+- If you find M, Male, or masculine indicator → use "Male"
+- If you find F, Female, or feminine indicator → use "Female"
+- If not found → use empty string ""
+
 OCR Text:
 {ocr_text}
 
@@ -88,7 +94,7 @@ Return ONLY the JSON object, no additional text.""",
 # ---------------------------------------------------------------------------
 CLASS_MAP = {0: "Aadhaar Card", 1: "Pan Card", 2: "Passport", 3: "Non-KYC Document"}
 
-FRAUD_THRESHOLD = 0.9
+FRAUD_THRESHOLD = 0.5
 
 # Passport month abbreviation lookup
 MONTH_ABBR = {
@@ -340,12 +346,17 @@ def _features_passport(ocr: dict) -> np.ndarray:
 # ---------------------------------------------------------------------------
 def _run_gnn(features_raw: np.ndarray, scaler: StandardScaler,
              gnn: torch.nn.Module, db_emb: torch.Tensor,
-             db_records: list, label_fn) -> dict:
+             db_records: list, label_fn, doc_type: str = "Unknown") -> dict:
     """
     features_raw : (1, D) unscaled feature vector
     db_emb       : (N, 64) L2-normalised embeddings of training records
     label_fn     : callable(record) → display dict for similar_records
+    doc_type     : document type for logging
     """
+    print(f"[GNN] Running GNN for {doc_type}")
+    print(f"[GNN] Number of records in database: {len(db_records)}")
+    print(f"[GNN] Database embeddings shape: {db_emb.shape}")
+    
     scaled = scaler.transform(features_raw).astype(np.float32)
     x = torch.tensor(scaled, dtype=torch.float)
     empty_ei = torch.empty((2, 0), dtype=torch.long)
@@ -354,11 +365,16 @@ def _run_gnn(features_raw: np.ndarray, scaler: StandardScaler,
         emb = gnn(x, empty_ei)                               # (1, 64)
         anomaly_score = float(torch.norm(emb, dim=1).item())
 
+    print(f"[GNN] Anomaly score: {anomaly_score:.6f}")
+    print(f"[GNN] Embedding shape: {emb.shape}")
+
     # Cosine similarity against all training embeddings
     norm = emb.norm(dim=1, keepdim=True).clamp(min=1e-8)
     emb_norm = emb / norm                                     # (1, 64)
     sims = torch.mm(emb_norm, db_emb.T).squeeze(0)           # (N,)
     top5_idx = sims.topk(min(5, len(db_records))).indices.tolist()
+
+    print(f"[GNN] Top 5 similarity scores: {[sims[idx].item() for idx in top5_idx]}")
 
     similar = []
     for idx in top5_idx:
@@ -366,7 +382,7 @@ def _run_gnn(features_raw: np.ndarray, scaler: StandardScaler,
         rec["similarity"] = round(float(sims[idx].item()), 4)
         similar.append(rec)
 
-    status = "Suspicious KYC Record" if anomaly_score >= FRAUD_THRESHOLD else "Normal KYC Record"
+    status = "Suspicious" if anomaly_score >= FRAUD_THRESHOLD else "Approved"
     return {
         "anomaly_score": round(anomaly_score, 6),
         "threshold": FRAUD_THRESHOLD,
@@ -379,17 +395,30 @@ def _run_gnn(features_raw: np.ndarray, scaler: StandardScaler,
 # Label helpers for similar-record display
 # ---------------------------------------------------------------------------
 def _label_aadhaar(r):
-    return {"Full Name": r.get("Full Name", ""), "Gender": r.get("Gender", ""),
-            "Date/Year of Birth": r.get("Date/Year of Birth", "")}
+    return {
+        "Full Name": r.get("Full Name", ""), 
+        "Gender": r.get("Gender", ""),
+        "Date/Year of Birth": r.get("Date/Year of Birth", ""),
+        "Aadhaar Number": r.get("Aadhaar Number", "")[:4] + "****" + r.get("Aadhaar Number", "")[-4:] if len(r.get("Aadhaar Number", "")) >= 8 else "N/A"
+    }
 
 def _label_pan(r):
-    return {"Name": r.get("Name", ""), "PAN Number": r.get("PAN Number", ""),
-            "Date of Birth": r.get("Date of Birth", "")}
+    return {
+        "Name": r.get("Name", ""), 
+        "Parent's Name": r.get("Parent's Name", ""),
+        "PAN Number": r.get("PAN Number", "")[:2] + "****" + r.get("PAN Number", "")[-4:] if len(r.get("PAN Number", "")) >= 6 else "N/A",
+        "Date of Birth": r.get("Date of Birth", "")
+    }
 
 def _label_passport(r):
-    return {"Name": f"{r.get('given_name','')} {r.get('surname','')}".strip(),
-            "Date of Birth": r.get("date_of_birth", ""),
-            "Place of Issue": r.get("place_of_issue", "")}
+    return {
+        "Name": f"{r.get('given_name','')} {r.get('surname','')}".strip(),
+        "Date of Birth": r.get("date_of_birth", ""),
+        "Nationality": r.get("nationality", ""),
+        "Gender": r.get("sex", ""),
+        "Place of Birth": r.get("place_of_birth", ""),
+        "Place of Issue": r.get("place_of_issue", "")
+    }
 
 
 # ===========================================================================
@@ -417,22 +446,37 @@ def load_or_build_cache(doc_type, data_path, scaler_path, emb_path, records_path
         db_emb = torch.load(emb_path, map_location="cpu")
         with open(records_path, 'rb') as f:
             records = pickle.load(f)
+        
+        # Verify document type separation
+        print(f"[ML-Service] ✓ Loaded {doc_type} cache:")
+        print(f"  - Total records: {len(records)}")
+        print(f"  - Embeddings shape: {db_emb.shape}")
+        print(f"  - Scaler features: {scaler.n_features_in_}")
+        
         return scaler, db_emb, records
     
     print(f"[ML-Service] Building {doc_type} feature matrix and fitting StandardScaler...")
     with open(data_path, encoding="utf-8") as f:
         records = json.load(f)
+    
+    print(f"[ML-Service] {doc_type} records loaded: {len(records)} documents")
+    
     features_raw = build_matrix_fn(records, sentence_model)
     scaler = StandardScaler()
     features_scaled = scaler.fit_transform(features_raw)
     
-    print(f"[ML-Service] Loading {doc_type} GNN model...")
+    print(f"[ML-Service] Loading {doc_type} GNN model from: {gnn_model_path}")
     gnn = gnn_class()
     gnn.load_state_dict(torch.load(gnn_model_path, map_location="cpu"))
     gnn.eval()
     
     print(f"[ML-Service] Building {doc_type} GNN embedding index...")
     db_emb = _gnn_embeddings(features_scaled, gnn)
+    
+    print(f"[ML-Service] ✓ Built {doc_type} cache:")
+    print(f"  - Total records: {len(records)}")
+    print(f"  - Embeddings shape: {db_emb.shape}")
+    print(f"  - Scaler features: {scaler.n_features_in_}")
     
     # Save to cache
     print(f"[ML-Service] Saving {doc_type} cache files...")
@@ -651,6 +695,15 @@ def parse_document():
     try:
         extracted_data = extract_with_groq(raw_ocr_text, document_type)
         
+        # Post-process: Ensure Passport gender is formatted as Male/Female
+        if document_type == "Passport" and "sex" in extracted_data:
+            sex = str(extracted_data.get("sex", "")).strip().upper()
+            if sex in ["M", "MALE"]:
+                extracted_data["sex"] = "Male"
+            elif sex in ["F", "FEMALE"]:
+                extracted_data["sex"] = "Female"
+            print(f"[Parse] Passport sex field processed: '{sex}' → '{extracted_data['sex']}'")
+        
         return jsonify({
             "success": True,
             "request_id": request_id,
@@ -675,21 +728,29 @@ def fraud_analysis():
         return jsonify({"error": "Missing document_type or extracted_data"}), 400
     
     try:
+        print(f"\n[GNN Analysis] Processing document type: {document_type}")
+        
         # Extract features based on document type
         if document_type == "Aadhaar Card":
+            print(f"[GNN Analysis] Using Aadhaar GNN model")
+            print(f"[GNN Analysis] Model path: {AADHAAR_GNN_PATH}")
             feats = _features_aadhaar(extracted_data)
             fraud = _run_gnn(feats, aadhaar_scaler, aadhaar_gnn,
-                           aadhaar_db_emb, aadhaar_records, _label_aadhaar)
+                           aadhaar_db_emb, aadhaar_records, _label_aadhaar, "Aadhaar Card")
         
         elif document_type == "Pan Card":
+            print(f"[GNN Analysis] Using Pan Card GNN model")
+            print(f"[GNN Analysis] Model path: {PAN_GNN_PATH}")
             feats = _features_pan(extracted_data)
             fraud = _run_gnn(feats, pan_scaler, pan_gnn,
-                           pan_db_emb, pan_records, _label_pan)
+                           pan_db_emb, pan_records, _label_pan, "Pan Card")
         
         elif document_type == "Passport":
+            print(f"[GNN Analysis] Using Passport GNN model")
+            print(f"[GNN Analysis] Model path: {PASSPORT_GNN_PATH}")
             feats = _features_passport(extracted_data)
             fraud = _run_gnn(feats, passport_scaler, passport_gnn,
-                           passport_db_emb, passport_records, _label_passport)
+                           passport_db_emb, passport_records, _label_passport, "Passport")
         
         else:
             return jsonify({"error": f"Unsupported document type: {document_type}"}), 400

@@ -1,52 +1,55 @@
 const mongoose = require('mongoose');
 
 const verificationSchema = new mongoose.Schema({
-  user: {
+  user_id: {
     type: mongoose.Schema.ObjectId,
     ref: 'User',
     required: true
   },
-  name: {
+  user_name: {
     type: String,
     required: true
   },
-  initials: String,
-  docType: {
+  document_type: {
     type: String,
-    required: true
+    required: true,
+    enum: ['PAN Card', 'Aadhaar Card', 'Passport', 'Non-KYC Document']
   },
-  docTypeSub: String,
-  date: {
+  submitted_date: {
     type: Date,
     default: Date.now
   },
-  confidence: {
+  anomaly_score: {
     type: Number,
-    required: true
+    min: 0,
+    max: 1
   },
   status: {
     type: String,
-    enum: ['Approved', 'Pending', 'Rejected'],
+    enum: ['Approved', 'Suspicious', 'Rejected', 'Non-KYC'],
     default: 'Pending'
   },
+  extracted_data: {
+    type: Object,
+    default: null
+  },
+  similar_nodes: {
+    type: Array,
+    default: []
+  },
+  // Keep legacy fields for backward compatibility
   details: {
     faceMatch: String,
     forgeryDetection: String,
     documentStatus: String,
     extractedName: String,
     extractedAddress: String,
-    anomalyScore: Number,
-    fraudStatus: String,
     ocrData: {
       type: Object,
       default: null
     },
     classScores: {
       type: Object,
-      default: null
-    },
-    similarRecords: {
-      type: Array,
       default: null
     }
   },

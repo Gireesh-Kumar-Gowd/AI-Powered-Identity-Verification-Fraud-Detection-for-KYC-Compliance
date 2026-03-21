@@ -6,19 +6,28 @@ const VerificationResult = ({ result, onStartNew }) => {
 
   const { document_type, extracted_data, anomaly_score, status, similar_records } = result;
   
-  // Color coding for anomaly score
+  // Determine status based on anomaly score
+  const getApprovalStatus = (score) => {
+    // anomaly_score < 0.5 = APPROVED (legitimate)
+    // anomaly_score >= 0.5 = SUSPICIOUS (potential fraud)
+    return score < 0.5 ? "Approved" : "Suspicious";
+  };
+
+  // Color coding for anomaly score - FIXED THRESHOLDS
   const getScoreColor = (score) => {
-    if (score < 0.5) return "#10B981"; // Green - safe
-    if (score < 0.9) return "#FBBF24"; // Amber - warning
-    return "#EF4444"; // Red - fraud
+    if (score < 0.3) return "#10B981"; // Green - low anomaly (0.0-0.3)
+    if (score < 0.6) return "#FBBF24"; // Yellow - moderate anomaly (0.3-0.6)
+    return "#EF4444"; // Red - high anomaly (0.6-1.0)
   };
 
-  const getStatusColor = (status) => {
-    return status === "Approved" ? "#10B981" : "#EF4444";
+  const getStatusColor = (isApproved) => {
+    return isApproved ? "#10B981" : "#EF4444";
   };
 
+  // Determine approval status
+  const approvalStatus = getApprovalStatus(anomaly_score);
   const scoreColor = getScoreColor(anomaly_score);
-  const statusColor = getStatusColor(status);
+  const statusColor = getStatusColor(approvalStatus === "Approved");
 
   // Get fields to display based on document type
   const getDisplayFields = () => {
@@ -58,9 +67,9 @@ const VerificationResult = ({ result, onStartNew }) => {
       {/* Status Circle */}
       <div className="result-header">
         <div className="status-circle" style={{ backgroundColor: statusColor }}>
-          {status === "Approved" ? "✓" : "⚠"}
+          {approvalStatus === "Approved" ? "✓" : "⚠"}
         </div>
-        <h2>Verification {status}</h2>
+        <h2>Verification {approvalStatus}</h2>
         <p>All steps completed successfully</p>
       </div>
 
@@ -97,7 +106,7 @@ const VerificationResult = ({ result, onStartNew }) => {
             <div className="anomaly-header">
               <span>Anomaly Score</span>
               <span className="anomaly-score" style={{ color: scoreColor }}>
-                {(anomaly_score * 100).toFixed(2)}%
+                {anomaly_score.toFixed(2)}
               </span>
             </div>
             <div className="anomaly-bar">
@@ -111,11 +120,11 @@ const VerificationResult = ({ result, onStartNew }) => {
             </div>
             <div className="anomaly-info">
               <p>
-                {anomaly_score < 0.5
-                  ? "✓ Document appears legitimate - No suspicious patterns detected"
-                  : anomaly_score < 0.9
-                  ? "⚠ Moderate risk detected - Review carefully"
-                  : "⚠ High fraud risk detected - Potential fraudulent document"}
+                {anomaly_score < 0.3
+                  ? "✓ Low anomaly - Document appears genuine"
+                  : anomaly_score < 0.6
+                  ? "⚠ Moderate anomaly - Manual review recommended"
+                  : "⚠ High anomaly - Suspicious document"}
               </p>
             </div>
           </div>
@@ -124,41 +133,29 @@ const VerificationResult = ({ result, onStartNew }) => {
         {/* Top 5 Similar Nodes */}
         {similar_records && similar_records.length > 0 && (
           <div className="result-section">
-            <h3>Top 5 Most Similar Records</h3>
-            <div className="nodes-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Record ID</th>
-                    <th>Similarity Score</th>
-                    <th>Risk Level</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {similar_records.map((record, idx) => {
-                    const similarity = record.similarity || 0;
-                    const riskLevel = similarity > 0.8 ? "High" : similarity > 0.5 ? "Medium" : "Low";
-                    const riskColor =
-                      riskLevel === "High" ? "#EF4444" : riskLevel === "Medium" ? "#FBBF24" : "#10B981";
-
-                    return (
-                      <tr key={idx}>
-                        <td>Record #{idx + 1}</td>
-                        <td>
-                          <span className="similarity-badge">
-                            {(similarity * 100).toFixed(1)}%
-                          </span>
-                        </td>
-                        <td>
-                          <span className="risk-badge" style={{ color: riskColor, borderColor: riskColor }}>
-                            {riskLevel}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <h3>Top 5 Most Similar Documents</h3>
+            <div className="similar-docs-container">
+              {similar_records.slice(0, 2).map((record, idx) => (
+                <div key={idx} className="similar-doc-card">
+                  <div className="doc-header">
+                    <span className="doc-number">Document #{idx + 1}</span>
+                    <span className="similarity-badge">
+                      Similarity: {record.similarity.toFixed(4)}
+                    </span>
+                  </div>
+                  <div className="doc-details">
+                    {Object.entries(record).map(([key, value]) => {
+                      if (key === 'similarity') return null;
+                      return (
+                        <div key={key} className="detail-row">
+                          <span className="detail-label">{key}:</span>
+                          <span className="detail-value">{String(value)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -168,9 +165,9 @@ const VerificationResult = ({ result, onStartNew }) => {
           <div className="status-box" style={{ borderLeftColor: statusColor }}>
             <h4>Final Verification Status</h4>
             <p className="status-text" style={{ color: statusColor }}>
-              {status === "Approved"
+              {approvalStatus === "Approved"
                 ? "✓ Document verification APPROVED"
-                : "⚠ Document verification REJECTED - Potential fraud detected"}
+                : "⚠ Document verification SUSPICIOUS - Potential fraud detected"}
             </p>
           </div>
         </div>

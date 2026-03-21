@@ -208,6 +208,182 @@
 }
 
 
+/* NEW KYC Layout - Fixed Left/Right Columns */
+.kyc-layout-container {
+  display: grid;
+  grid-template-columns: 0.4fr 0.6fr;
+  gap: 32px;
+  height: 100%;
+}
+
+.kyc-left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.kyc-left-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.kyc-left-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.kyc-left-panel::-webkit-scrollbar-thumb {
+  background: var(--border-soft);
+  border-radius: 3px;
+}
+
+.kyc-right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.kyc-right-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.kyc-right-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.kyc-right-panel::-webkit-scrollbar-thumb {
+  background: var(--border-soft);
+  border-radius: 3px;
+}
+
+.progress-card-static {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.upload-card-full {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.upload-card-full .drop-zone {
+  flex-grow: 1;
+  min-height: 300px;
+}
+
+/* New upload-grid for backward compatibility */
+.upload-grid { 
+  display: none; 
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .kyc-layout-container {
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .kyc-layout-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .kyc-right-panel {
+    position: relative;
+    top: auto;
+    max-height: none;
+  }
+}
+
+/* Checklist Styles */
+.ai-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  transition: all 0.2s;
+}
+
+.check-item.done {
+  color: var(--success);
+  font-weight: 500;
+}
+
+.check-item.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.check-item.waiting {
+  color: var(--text-muted);
+}
+
+.check-item.skipped {
+  color: var(--text-muted);
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.check-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  font-weight: 600;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.check-item.done .check-icon {
+  background: var(--success);
+  color: white;
+}
+
+.check-item.active .check-icon {
+  background: var(--accent);
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+.check-item.waiting .check-icon {
+  border: 2px solid var(--text-muted);
+  color: var(--text-muted);
+}
+
+.check-item.skipped .check-icon {
+  background: var(--border-soft);
+  color: var(--text-muted);
+  border: none;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   .app-window {
     background: #0f172a;

@@ -173,6 +173,81 @@
   font-size: 0.85rem;
 }
 
+.similarity-score {
+  display: inline-block;
+  background: #dbeafe;
+  color: #0369a1;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* Similar Documents Card Styles */
+.similar-docs-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.similar-doc-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #f9fafb;
+}
+
+.doc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.doc-number {
+  font-weight: 600;
+  color: #111827;
+  font-size: 0.95rem;
+}
+
+.similarity-badge {
+  display: inline-block;
+  background: #dbeafe;
+  color: #0369a1;
+  padding: 0.375rem 0.875rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.doc-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.detail-row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #6b7280;
+  min-width: 150px;
+  font-size: 0.875rem;
+}
+
+.detail-value {
+  color: #111827;
+  flex: 1;
+  word-break: break-all;
+  font-size: 0.875rem;
+}
+
 .risk-badge {
   display: inline-block;
   border: 2px solid;
@@ -228,6 +303,46 @@
 
 .btn-new-verification:active {
   transform: translateY(0);
+}
+
+/* Non-KYC Alert */
+.non-kyc-alert {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem;
+  background-color: #fef2f2;
+  border: 2px solid #fecaca;
+  border-radius: 8px;
+  align-items: flex-start;
+}
+
+.alert-icon {
+  flex-shrink: 0;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fee2e2;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  color: #dc2626;
+}
+
+.alert-content {
+  flex: 1;
+}
+
+.alert-content h3 {
+  margin: 0 0 0.5rem 0;
+  color: #dc2626;
+  font-size: 1.1rem;
+}
+
+.alert-content p {
+  margin: 0;
+  color: #991b1b;
+  line-height: 1.5;
 }
 
 /* Responsive */
