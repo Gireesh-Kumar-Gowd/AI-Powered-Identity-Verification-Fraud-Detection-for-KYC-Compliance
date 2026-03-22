@@ -12,8 +12,8 @@ const verificationSchema = new mongoose.Schema({
   },
   document_type: {
     type: String,
-    required: true,
-    enum: ['PAN Card', 'Aadhaar Card', 'Passport', 'Non-KYC Document']
+    enum: ['Pan Card', 'Aadhaar Card', 'Passport', 'Non-KYC'],
+    required: true
   },
   submitted_date: {
     type: Date,
@@ -21,8 +21,7 @@ const verificationSchema = new mongoose.Schema({
   },
   anomaly_score: {
     type: Number,
-    min: 0,
-    max: 1
+    required: true
   },
   status: {
     type: String,

@@ -155,16 +155,25 @@ exports.getAllVerifications = async (req, res, next) => {
     if (verifications.length > 0) {
       console.log(`First record:`, JSON.stringify(verifications[0], null, 2));
     } else {
-      console.log('📭 No verifications found');
+      console.log('📭 No verifications found in database');
     }
+    
+    // Properly serialize ObjectId
+    const serializedVerifications = verifications.map(v => {
+      return {
+        ...v,
+        _id: v._id ? v._id.toString() : v._id
+      };
+    });
     
     res.status(200).json({
       success: true,
-      count: verifications.length,
-      data: verifications
+      count: serializedVerifications.length,
+      data: serializedVerifications
     });
   } catch (err) {
     console.error('❌ Error in getAllVerifications:', err.message);
+    console.error('📋 Stack trace:', err.stack);
     res.status(500).json({
       success: false,
       error: err.message
@@ -248,11 +257,14 @@ exports.saveVerification = async (req, res, next) => {
 
 exports.saveManualDecision = async (req, res, next) => {
   try {
-    console.log('🔵 saveManualDecision endpoint called');
+    console.log('\n🔵 saveManualDecision endpoint called');
+    console.log('📨 Request method:', req.method);
+    console.log('📨 Content-Type:', req.headers['content-type']);
     console.log('📨 Request body:', JSON.stringify(req.body, null, 2));
     
     const { user_name, document_type, anomaly_score, status, extracted_data, similar_nodes } = req.body;
 
+    // Validate required fields
     if (!user_name || !document_type || !status) {
       console.error('❌ Missing required fields for manual decision:', { user_name, document_type, status });
       return res.status(400).json({
@@ -261,7 +273,7 @@ exports.saveManualDecision = async (req, res, next) => {
       });
     }
 
-    console.log('✅ All required fields present for manual decision');
+    console.log('✅ All required fields present');
     console.log('📦 Creating verification with status:', status);
     
     const verification = await Verification.create({
@@ -269,13 +281,14 @@ exports.saveManualDecision = async (req, res, next) => {
       user_name,
       document_type,
       submitted_date: new Date(),
-      anomaly_score: anomaly_score || null,
+      anomaly_score: anomaly_score !== undefined ? anomaly_score : null,
       status,
       extracted_data: extracted_data || {},
       similar_nodes: similar_nodes || []
     });
 
-    console.log('✅ Manual decision saved successfully:', verification._id);
+    console.log('✅ Manual decision saved successfully to MongoDB');
+    console.log('📊 Verification ID:', verification._id);
     console.log('📊 Document details:', { 
       user_name: verification.user_name,
       document_type: verification.document_type,
@@ -283,15 +296,25 @@ exports.saveManualDecision = async (req, res, next) => {
       anomaly_score: verification.anomaly_score
     });
     
+    // Properly serialize ObjectId
     res.status(201).json({
       success: true,
-      verification_id: verification._id,
-      data: verification
+      verification_id: verification._id.toString(),
+      data: {
+        _id: verification._id.toString(),
+        user_name: verification.user_name,
+        document_type: verification.document_type,
+        submitted_date: verification.submitted_date,
+        anomaly_score: verification.anomaly_score,
+        status: verification.status,
+        extracted_data: verification.extracted_data,
+        similar_nodes: verification.similar_nodes
+      }
     });
   } catch (err) {
-    console.error('❌ Error in saveManualDecision:', err.message);
-    console.error('📋 Full error:', err);
-    console.error('🗄️ MongoDB connection status:', Verification.db?.readyState);
+    console.error('\n❌ Error in saveManualDecision:', err.message);
+    console.error('📋 Full error details:', err);
+    console.error('🗄️ MongoDB connection status:', Verification.collection.conn.readyState);
     res.status(500).json({
       success: false,
       error: err.message,

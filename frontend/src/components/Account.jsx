@@ -1,29 +1,78 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "./DashboardLayout";
 
 const Account = () => {
   const navigate = useNavigate();
-
-
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
   const [twoFactor, setTwoFactor] = useState(false);
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [pushAlerts, setPushAlerts] = useState(false);
 
-
   const [formData, setFormData] = useState({
-    fullName: "Admin User",
-    email: "admin@securecheck.ai",
-    phone: "+91 98765 43210"
+    fullName: "",
+    email: "",
+    phone: ""
   });
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setFormData({
+          fullName: data.data.name || "",
+          email: data.data.email,
+          phone: data.data.phone || ""
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load profile:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    alert("✅ Personal Information updated successfully!");
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/auth/update-profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: formData.fullName,
+          phone: formData.phone
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setMessage("✅ Profile updated successfully");
+        setTimeout(() => setMessage(""), 3000);
+      }
+    } catch (err) {
+      setMessage("❌ Failed to update profile");
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleUpdatePassword = () => {
@@ -32,8 +81,16 @@ const Account = () => {
 
   const handleSignOut = () => {
     if (window.confirm("Are you sure you want to sign out?")) {
+      localStorage.removeItem('token');
       navigate("/");
     }
+  };
+
+  if (loading) return <DashboardLayout><div style={{ padding: "20px", textAlign: "center" }}>Loading...</div></DashboardLayout>;
+
+  const getInitials = (name) => {
+    if (!name) return "AK";
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
   return (
@@ -52,8 +109,8 @@ const Account = () => {
         <div className="settings-left-col">
           
           <div className="dash-card profile-summary">
-            <div className="profile-avatar-large">AK</div>
-            <h2 className="profile-name">{formData.fullName}</h2>
+            <div className="profile-avatar-large">{getInitials(formData.fullName)}</div>
+            <h2 className="profile-name">{formData.fullName || "User"}</h2>
             <p className="profile-email">{formData.email}</p>
             <span className="role-badge">Super Admin</span>
           </div>
@@ -90,6 +147,7 @@ const Account = () => {
             </div>
 
             <form onSubmit={handleSaveProfile}>
+              {message && <div style={{ marginBottom: "15px", padding: "10px", backgroundColor: message.includes("✅") ? "#d4edda" : "#f8d7da", borderRadius: "4px", color: message.includes("✅") ? "#155724" : "#721c24" }}>{message}</div>}
               <div className="form-grid-2">
                 <div className="form-group">
                   <label>Full Name</label>
@@ -97,7 +155,7 @@ const Account = () => {
                 </div>
                 <div className="form-group">
                   <label>Email Address</label>
-                  <input type="email" name="email" className="form-input" value={formData.email} onChange={handleInputChange} required />
+                  <input type="email" name="email" className="form-input" value={formData.email} readOnly style={{ backgroundColor: "#f5f5f5", cursor: "not-allowed" }} />
                 </div>
               </div>
               <div className="form-group" style={{ maxWidth: "48%" }}>
@@ -106,8 +164,8 @@ const Account = () => {
               </div>
 
               <div className="save-action-row">
-                <button type="submit" className="btn-primary" style={{ width: "auto" }}>
-                  Save Changes
+                <button type="submit" className="btn-primary" style={{ width: "auto" }} disabled={saving}>
+                  {saving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>

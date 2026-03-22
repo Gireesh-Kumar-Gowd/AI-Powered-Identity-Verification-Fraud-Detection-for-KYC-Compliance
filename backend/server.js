@@ -23,6 +23,14 @@ const connectDB = async () => {
     });
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     console.log(`📊 Database: ${conn.connection.name}`);
+    
+    // List collections
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    console.log(`📚 Collections in database: ${collections.map(c => c.name).join(', ')}`);
+    
+    // Check verifications collection
+    const verificationCount = await mongoose.connection.db.collection('verifications').countDocuments();
+    console.log(`📋 Documents in 'verifications' collection: ${verificationCount}`);
   } catch (err) {
     console.error(`❌ MongoDB Connection Error: ${err.message}`);
     console.log('TIP: Ensure your MongoDB Atlas IP Whitelist allows this connection or use a local MongoDB instance.');
@@ -38,12 +46,20 @@ const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Enable CORS
-app.use(cors());
+// Enable CORS - explicitly allow frontend
+app.use(cors({
+  origin: 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 
 // Logging middleware
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
+  console.log(`\n${new Date().toISOString()} ${req.method} ${req.path}`);
+  if (req.method === 'POST' || req.method === 'PUT') {
+    console.log(`  Body:`, JSON.stringify(req.body).substring(0, 200) + '...');
+  }
   next();
 });
 
@@ -70,7 +86,8 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running in ${NODE_ENV} mode on port ${PORT}`);
+  console.log(`\n🚀 Server running in ${NODE_ENV} mode on port ${PORT}`);
   console.log(`📍 Backend URL: http://localhost:${PORT}`);
   console.log(`📍 MongoDB URI: ${process.env.MONGODB_URI}`);
+  console.log(`✅ CORS enabled for: http://localhost:5173\n`);
 });

@@ -102,39 +102,6 @@ const Upload = () => {
     if (supportingInputRef.current) supportingInputRef.current.value = "";
   };
 
-  const saveVerificationToMongoDB = async (verificationData) => {
-    try {
-      // If user data isn't in localStorage, use hardcoded admin user (for demo)
-      if (!verificationData.user_id) {
-        verificationData.user_id = 'admin'; // temporary ID
-        verificationData.user_name = 'Admin User';
-      }
-
-      console.log('📤 Saving verification to MongoDB:', verificationData);
-      
-      const url = 'http://localhost:5000/api/kyc/verifications';
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(verificationData)
-      });
-
-      console.log('📥 Save response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ Failed to save verification: ${response.status} ${errorText}`);
-      } else {
-        const result = await response.json();
-        console.log('✅ Verification saved to MongoDB successfully:', result);
-      }
-    } catch (error) {
-      console.error('❌ Error saving verification to MongoDB:', error);
-    }
-  };
-
   const handleStartVerification = async () => {
     if (!mainFile) return;
     setVerificationResult(null);
@@ -155,23 +122,12 @@ const Upload = () => {
       // Check if document is valid KYC document
       const validKYCDocuments = ["Aadhaar Card", "Pan Card", "Passport"];
       if (!validKYCDocuments.includes(documentType)) {
-        // Non-KYC document detected - stop pipeline and save to MongoDB
+        // Non-KYC document detected - show result page, user will click button to save
         const nonKYCResult = {
           is_non_kyc: true,
           document_type: documentType,
         };
         
-        // Save non-KYC verification to MongoDB
-        await saveVerificationToMongoDB({
-          user_id: 'admin',
-          user_name: 'Admin User',
-          document_type: documentType,
-          anomaly_score: null,
-          status: 'Non-KYC',
-          extracted_data: {},
-          similar_nodes: []
-        });
-
         setVerificationResult(nonKYCResult);
         setCurrentStep(1);
         setProgress(100);
@@ -215,18 +171,6 @@ const Upload = () => {
         status: fraudResult.status,
         similar_records: fraudResult.similar_records || [],
       };
-
-
-      // Save verification to MongoDB
-      await saveVerificationToMongoDB({
-        user_id: 'admin',
-        user_name: 'Admin User',
-        document_type: documentType,
-        anomaly_score: fraudResult.anomaly_score,
-        status: fraudResult.status,
-        extracted_data: extractedData,
-        similar_nodes: fraudResult.similar_records || []
-      });
 
       setVerificationResult(finalResult);
       setAiStatus("completed");

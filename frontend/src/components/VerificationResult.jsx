@@ -13,16 +13,20 @@ const VerificationResult = ({ result, onStartNew, onVerificationSaved }) => {
   
   // Determine status based on anomaly score
   const getApprovalStatus = (score) => {
-    // anomaly_score < 0.5 = APPROVED (legitimate)
-    // anomaly_score >= 0.5 = SUSPICIOUS (potential fraud)
-    return score < 0.5 ? "Approved" : "Suspicious";
+    return score < 2.0 ? "Approved" : "Suspicious";
   };
 
-  // Color coding for anomaly score - FIXED THRESHOLDS
+  // Color coding for anomaly score
   const getScoreColor = (score) => {
-    if (score < 0.3) return "#10B981"; // Green - low anomaly (0.0-0.3)
-    if (score < 0.6) return "#FBBF24"; // Yellow - moderate anomaly (0.3-0.6)
-    return "#EF4444"; // Red - high anomaly (0.6-1.0)
+    if (score < 1.5) return "#10B981"; // Green - low anomaly
+    if (score < 2.0) return "#FBBF24"; // Yellow - moderate anomaly
+    return "#EF4444"; // Red - high anomaly
+  };
+
+  const getAnomalyLabel = (score) => {
+    if (score < 1.5) return "Low anomaly";
+    if (score < 2.0) return "Moderate anomaly";
+    return "High anomaly - Suspicious";
   };
 
   const getStatusColor = (isApproved) => {
@@ -72,9 +76,22 @@ const VerificationResult = ({ result, onStartNew, onVerificationSaved }) => {
     setSelectedDecision(decision);
 
     try {
+      // Extract user name from document
+      const getDocumentName = (docType, data) => {
+        if (docType === 'Pan Card')
+          return data?.Name || data?.name || 'Unknown';
+        if (docType === 'Aadhaar Card')
+          return data?.['Full Name'] || data?.full_name || 'Unknown';
+        if (docType === 'Passport')
+          return `${data?.surname || ''} ${data?.given_name || ''}`.trim() || 'Unknown';
+        return 'Unknown';
+      };
+      
+      const userName = getDocumentName(document_type, extracted_data);
+
       console.log('🔵 Sending manual decision:', decision);
       console.log('📦 Request body:', {
-        user_name: 'Admin User',
+        user_name: userName,
         document_type,
         anomaly_score,
         status: decision,
@@ -88,7 +105,7 @@ const VerificationResult = ({ result, onStartNew, onVerificationSaved }) => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          user_name: 'Admin User',
+          user_name: userName,
           document_type,
           anomaly_score,
           status: decision,
@@ -127,7 +144,11 @@ const VerificationResult = ({ result, onStartNew, onVerificationSaved }) => {
         <div className="status-circle" style={{ backgroundColor: statusColor }}>
           {approvalStatus === "Approved" ? "✓" : "⚠"}
         </div>
-        <h2>Verification {approvalStatus}</h2>
+        <h2 style={{ color: statusColor }}>
+          {approvalStatus === "Approved" 
+            ? "Document verification APPROVED" 
+            : "Document verification SUSPICIOUS - Potential fraud detected"}
+        </h2>
         <p>All steps completed successfully</p>
       </div>
 
@@ -171,19 +192,13 @@ const VerificationResult = ({ result, onStartNew, onVerificationSaved }) => {
               <div
                 className="anomaly-fill"
                 style={{
-                  width: `${Math.min(anomaly_score * 100, 100)}%`,
+                  width: `${anomaly_score > 2.0 ? 100 : (anomaly_score / 2.0) * 100}%`,
                   backgroundColor: scoreColor,
                 }}
               />
             </div>
             <div className="anomaly-info">
-              <p>
-                {anomaly_score < 0.3
-                  ? "✓ Low anomaly - Document appears genuine"
-                  : anomaly_score < 0.6
-                  ? "⚠ Moderate anomaly - Manual review recommended"
-                  : "⚠ High anomaly - Suspicious document"}
-              </p>
+              <p>{getAnomalyLabel(anomaly_score)}</p>
             </div>
           </div>
         </div>

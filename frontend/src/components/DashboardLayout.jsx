@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import "../styles/dashboard.css";
 
@@ -9,6 +9,31 @@ const DashboardLayout = ({ children }) => {
   // States
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [userName, setUserName] = useState("User");
+
+  useEffect(() => {
+    fetchUserName();
+  }, []);
+
+  const fetchUserName = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success && data.data.name) {
+        setUserName(data.data.name);
+      }
+    } catch (err) {
+      console.error("Failed to load user name:", err);
+    }
+  };
+
+  const getInitials = (name) => {
+    if (!name) return "AK";
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
 
   // Handlers
   const handleNotificationClick = () => {
@@ -17,6 +42,7 @@ const DashboardLayout = ({ children }) => {
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to logout?")) {
+      localStorage.removeItem('token');
       navigate("/login");
     }
   };
@@ -78,9 +104,9 @@ const DashboardLayout = ({ children }) => {
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 style={{ cursor: 'pointer', padding: '4px 8px', borderRadius: '8px', background: showUserMenu ? 'var(--bg-main)' : 'transparent' }}
               >
-                <div className="user-avatar">AK</div>
+                <div className="user-avatar">{getInitials(userName)}</div>
                 <div className="user-details">
-                  <span className="user-name">Admin User</span>
+                  <span className="user-name">{userName}</span>
                   <span className="user-role">Super Admin</span>
                 </div>
               </div>

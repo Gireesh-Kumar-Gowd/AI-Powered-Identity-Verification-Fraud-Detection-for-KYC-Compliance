@@ -263,14 +263,18 @@ const ChatHistory = () => {
                       <td>{formatDate(row.submitted_date)}</td>
                       <td>
                         <div className="confidence-wrapper">
-                          <div className="confidence-bar-bg">
-                            <div className="confidence-bar-fill" style={{ width: `${confidenceScore}%`, backgroundColor: getConfidenceColor(confidenceScore) }}></div>
-                          </div>
-                          <span style={{ fontWeight: "600", fontSize: "13px" }}>{confidenceScore}%</span>
+                          <span style={{ fontWeight: "600", fontSize: "13px" }}>{row.anomaly_score ? row.anomaly_score.toFixed(2) : 'N/A'}</span>
                         </div>
                       </td>
                       <td>
-                        <span className={`status-pill ${statusColor}`}>{row.status}</span>
+                        <span className={`status-pill ${statusColor}`} style={{
+                          backgroundColor: row.status === 'Approved' ? '#10B981' : 
+                                         row.status === 'Suspicious' ? '#FBBF24' :
+                                         row.status === 'Rejected' ? '#EF4444' : '#9CA3AF',
+                          color: 'white'
+                        }}>
+                          {row.status}
+                        </span>
                       </td>
                     </tr>
                   );
