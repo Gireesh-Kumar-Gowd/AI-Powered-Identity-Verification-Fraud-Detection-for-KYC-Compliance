@@ -342,7 +342,7 @@ def _features_passport(ocr: dict) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# Fraud detection: scale → GNN → anomaly score + top-5 similarity
+# Fraud detection: scale → GNN → anomaly score + top-2 similarity
 # ---------------------------------------------------------------------------
 def _run_gnn(features_raw: np.ndarray, scaler: StandardScaler,
              gnn: torch.nn.Module, db_emb: torch.Tensor,
@@ -372,12 +372,12 @@ def _run_gnn(features_raw: np.ndarray, scaler: StandardScaler,
     norm = emb.norm(dim=1, keepdim=True).clamp(min=1e-8)
     emb_norm = emb / norm                                     # (1, 64)
     sims = torch.mm(emb_norm, db_emb.T).squeeze(0)           # (N,)
-    top5_idx = sims.topk(min(5, len(db_records))).indices.tolist()
+    top2_idx = sims.topk(min(2, len(db_records))).indices.tolist()
 
-    print(f"[GNN] Top 5 similarity scores: {[sims[idx].item() for idx in top5_idx]}")
+    print(f"[GNN] Top 2 similarity scores: {[sims[idx].item() for idx in top2_idx]}")
 
     similar = []
-    for idx in top5_idx:
+    for idx in top2_idx:
         rec = label_fn(db_records[idx])
         rec["similarity"] = round(float(sims[idx].item()), 4)
         similar.append(rec)
