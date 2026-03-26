@@ -13,19 +13,19 @@ const VerificationResult = ({ result, onStartNew, onVerificationSaved }) => {
   
   // Determine status based on anomaly score
   const getApprovalStatus = (score) => {
-    return score < 2.0 ? "Approved" : "Suspicious";
+    return score < 4.0 ? "Approved" : "Suspicious";
   };
 
   // Color coding for anomaly score
   const getScoreColor = (score) => {
-    if (score < 1.5) return "#10B981"; // Green - low anomaly
-    if (score < 2.0) return "#FBBF24"; // Yellow - moderate anomaly
+    if (score < 3.0) return "#10B981"; // Green - low anomaly
+    if (score < 4.0) return "#FBBF24"; // Yellow - moderate anomaly
     return "#EF4444"; // Red - high anomaly
   };
 
   const getAnomalyLabel = (score) => {
-    if (score < 1.5) return "Low anomaly";
-    if (score < 2.0) return "Moderate anomaly";
+    if (score < 3.0) return "Low anomaly";
+    if (score < 4.0) return "Moderate anomaly";
     return "High anomaly - Suspicious";
   };
 
@@ -192,7 +192,7 @@ const VerificationResult = ({ result, onStartNew, onVerificationSaved }) => {
               <div
                 className="anomaly-fill"
                 style={{
-                  width: `${anomaly_score > 2.0 ? 100 : (anomaly_score / 2.0) * 100}%`,
+                  width: `${anomaly_score > 4.0 ? 100 : (anomaly_score / 4.0) * 100}%`,
                   backgroundColor: scoreColor,
                 }}
               />

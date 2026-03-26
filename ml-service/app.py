@@ -94,7 +94,7 @@ Return ONLY the JSON object, no additional text.""",
 # ---------------------------------------------------------------------------
 CLASS_MAP = {0: "Aadhaar Card", 1: "Pan Card", 2: "Passport", 3: "Non-KYC Document"}
 
-FRAUD_THRESHOLD = 0.5
+FRAUD_THRESHOLD = 4
 
 # Passport month abbreviation lookup
 MONTH_ABBR = {
