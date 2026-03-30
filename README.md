@@ -2,7 +2,7 @@
 
 # 🔐 AI-Powered Identity Verification & Fraud Detection for KYC Compliance
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT Vidzai Digital](https://img.shields.io/badge/License-MIT%20Vidzai%20Digital-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-19.2-blue.svg)](https://reactjs.org/)
@@ -33,6 +33,7 @@
 - [Blockchain Integration](#-blockchain-integration)
 - [Performance Metrics](#-performance-metrics)
 - [Screenshots](#-screenshots)
+- [Datasets](#-datasets)
 - [Roadmap](#-roadmap)
 - [Contributing](#-contributing)
 - [License](#-license)
@@ -709,6 +710,42 @@ function getAccessLogs(bytes32 hash) public view returns (AccessLog[])
 
 ---
 
+## 📊 Datasets
+
+The training datasets used for document classification and fraud detection models are available in the [`datasets/`](datasets/) folder and on Google Drive.
+
+### Document Classification Datasets
+
+| Document Type | Download Link |
+|---------------|---------------|
+| **Aadhaar Card** | [📥 Google Drive](https://drive.google.com/drive/folders/1NcbOx4qqpG9Xp9jLTT7rQdXUbiNt9Kkz?usp=sharing) |
+| **PAN Card** | [📥 Google Drive](https://drive.google.com/drive/folders/1XUeYAv7_-CnGtylipEghYai4dRni5J_D?usp=drive_link) |
+| **Passport** | [📥 Google Drive](https://drive.google.com/drive/folders/1AAhTLif8mx8-2T7fsFNm-wpIU9A3KagG?usp=drive_link) |
+
+### Extracted Data Records
+
+Pre-extracted JSON records for GNN training are located in [`Extracted data Records/`](Extracted%20data%20Records/):
+
+- `aadhaar_card_data.json` - Structured Aadhaar data
+- `pan_card_data.json` - Structured PAN data  
+- `passport_data.json` - Structured Passport data
+
+### Dataset Usage
+
+```python
+# Load extracted records for training
+import json
+
+with open('Extracted data Records/aadhaar_card_data(414).json', 'r') as f:
+    aadhaar_data = json.load(f)
+
+print(f"Loaded {len(aadhaar_data)} Aadhaar records")
+```
+
+> **Note**: All datasets contain synthetic/anonymized data for training purposes only. No real personal information is included.
+
+---
+
 ## 🗺️ Roadmap
 
 ### Phase 1: Core Features ✅ (Completed)
@@ -725,26 +762,14 @@ function getAccessLogs(bytes32 hash) public view returns (AccessLog[])
 - [ ] Multi-language OCR support (10+ languages)
 - [ ] Face matching for selfie verification
 
-### Phase 3: Enterprise Features 📅 (Planned - Q2 2026)
+### Phase 3: Enterprise & Compliance 📅 (Planned)
 - [ ] Bulk verification API (CSV/Excel upload)
-- [ ] Advanced analytics dashboard (Power BI integration)
+- [ ] Advanced analytics dashboard
 - [ ] Custom fraud rules engine (no-code builder)
 - [ ] Multi-tenant support with SSO (OAuth 2.0)
-- [ ] REST + GraphQL API gateway
-
-### Phase 4: Compliance & Security 📅 (Planned - Q3 2026)
 - [ ] GDPR/CCPA compliance automation
-- [ ] eKYC video verification (Aadhaar UIDAI compliant)
-- [ ] PCI DSS Level 1 certification
-- [ ] Penetration testing and audit
-- [ ] ISO 27001 compliance
-
-### Phase 5: Global Expansion 📅 (Planned - Q4 2026)
-- [ ] Support for 50+ document types (driver's license, voter ID, etc.)
-- [ ] Cross-border KYC sharing (regulatory sandbox)
-- [ ] Integration with government databases (India Stack API)
+- [ ] eKYC video verification
 - [ ] Mobile SDKs (iOS/Android)
-- [ ] White-label solution for banks
 
 ---
 
@@ -782,16 +807,26 @@ cd ml-service && pytest tests/
 
 ## 📄 License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT Vidzai Digital License** - see the [LICENSE](LICENSE) file for details.
 
 ```
-MIT License
+MIT Vidzai Digital License
 
 Copyright (c) 2026 A Gireesh kumar Gowd
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction...
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 ```
 
 ---
