@@ -696,19 +696,21 @@ function getAccessLogs(bytes32 hash) public view returns (AccessLog[])
 
 ## 📸 Screenshots
 
-### 1. Document Upload Interface
-![Upload Screen](https://via.placeholder.com/800x450.png?text=Document+Upload+Interface)
+### 1. login Interface
+<img width="1919" height="966" alt="image" src="https://github.com/user-attachments/assets/984a0090-f603-420a-9615-f3a7d4394611" />
+<img width="1919" height="966" alt="image" src="https://github.com/user-attachments/assets/ae20ef8e-e61d-4f34-b8e2-019a1ce4d190" />
 
-### 2. Verification Result (Approved)
-![Approved Result](https://via.placeholder.com/800x450.png?text=Verification+Approved)
 
-### 3. Fraud Detection Alert
-![Fraud Alert](https://via.placeholder.com/800x450.png?text=Fraud+Detection+Alert)
+### 2. Document Upload Interface
+<img width="1918" height="960" alt="image" src="https://github.com/user-attachments/assets/b0daf131-ef03-4468-affa-dfcae715b63a" />
+<img width="1919" height="969" alt="image" src="https://github.com/user-attachments/assets/bfb38222-92fc-4913-a760-86efcc9571fa" />
 
-### 4. Verification History Dashboard
-![Dashboard](https://via.placeholder.com/800x450.png?text=Verification+History)
+### 3. Verification Result (Approved)
+<img width="1919" height="975" alt="image" src="https://github.com/user-attachments/assets/cd67a775-60d0-47c8-8277-8ea24fa44cc1" />
 
----
+### 5. Verification History Dashboard
+<img width="1919" height="972" alt="image" src="https://github.com/user-attachments/assets/65aa1673-4f35-4a36-93e8-7906a830abc7" />
+
 
 ## 📊 Datasets
 
