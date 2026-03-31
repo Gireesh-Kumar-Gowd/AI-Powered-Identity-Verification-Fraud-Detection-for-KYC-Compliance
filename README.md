@@ -836,9 +836,9 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 ## 📧 Contact
 
 **Project Maintainer**: A Gireesh Kumar Gowd  
-**Email**: [your.email@example.com](mailto:gireeshkumargowd@gmail.com)  
-**GitHub**: [@yourusername](https://github.com/Gireesh-Kumar-Gowd)  
-**LinkedIn**: [Your LinkedIn](https://www.linkedin.com/in/arepalli-gireesh-kumar-gowd-737a0a377/)
+**Email**: [gireeshkumargowd@gmail.com](mailto:gireeshkumargowd@gmail.com)  
+**GitHub**: [@Gireesh-Kumar-Gowd](https://github.com/Gireesh-Kumar-Gowd)  
+**LinkedIn**: [LinkedIn](https://www.linkedin.com/in/arepalli-gireesh-kumar-gowd-737a0a377/)
 
 ### Support
 
