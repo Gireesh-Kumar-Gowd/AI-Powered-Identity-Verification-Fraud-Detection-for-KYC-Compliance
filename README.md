@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔐 AI-Powered Identity Verification & Fraud Detection for KYC Compliance
+# AI-Powered Identity Verification & Fraud Detection for KYC Compliance
 
 [![License: MIT Vidzai Digital](https://img.shields.io/badge/License-MIT%20Vidzai%20Digital-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
@@ -18,7 +18,7 @@
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 
 - [Overview](#-overview)
 - [Problem Statement](#-problem-statement)
@@ -41,30 +41,30 @@
 
 ---
 
-## 🎯 Overview
+##  Overview
 
 This project implements an **end-to-end AI-powered KYC (Know Your Customer) and AML (Anti-Money Laundering) compliance system** designed for financial institutions. It automates identity document verification, fraud detection, and compliance workflows using state-of-the-art Computer Vision, Natural Language Processing, and Graph Neural Networks.
 
 ### What Makes This Unique?
 
-✅ **Multi-Document Support**: Aadhaar Card, PAN Card, and Passport verification  
-✅ **Graph Neural Network (GNN)**: Advanced fraud detection using relational patterns  
-✅ **Blockchain Immutability**: Ethereum-based audit trails on Sepolia testnet  
-✅ **Real-time OCR**: EasyOCR + Groq LLM for intelligent text extraction  
-✅ **Anomaly Detection**: Sentence Transformer embeddings for similarity analysis  
-✅ **Production-Ready**: MERN stack with JWT authentication and role-based access control  
+ **Multi-Document Support**: Aadhaar Card, PAN Card, and Passport verification  
+ **Graph Neural Network (GNN)**: Advanced fraud detection using relational patterns  
+ **Blockchain Immutability**: Ethereum-based audit trails on Sepolia testnet  
+ **Real-time OCR**: EasyOCR + Groq LLM for intelligent text extraction  
+ **Anomaly Detection**: Sentence Transformer embeddings for similarity analysis  
+ **Production-Ready**: MERN stack with JWT authentication and role-based access control  
 
 ---
 
-## 🚨 Problem Statement
+##  Problem Statement
 
 Traditional KYC processes face critical challenges:
 
-- ⏱️ **Manual Review Bottlenecks**: Takes 3-5 days for document verification
-- 💰 **High Operational Costs**: $50-100 per customer for compliance teams
-- 🔓 **Fraud Vulnerability**: 15% of fraud goes undetected in manual reviews
-- 📈 **Poor Scalability**: Cannot handle sudden surges in verification requests
-- 🌐 **Cross-Border Complexity**: Inconsistent standards across jurisdictions
+-  **Manual Review Bottlenecks**: Takes 3-5 days for document verification
+-  **High Operational Costs**: $50-100 per customer for compliance teams
+-  **Fraud Vulnerability**: 15% of fraud goes undetected in manual reviews
+-  **Poor Scalability**: Cannot handle sudden surges in verification requests
+-  **Cross-Border Complexity**: Inconsistent standards across jurisdictions
 
 ### Our Solution
 
@@ -72,9 +72,9 @@ This system reduces verification time to **< 30 seconds** with **98.5% accuracy*
 
 ---
 
-## ⚡ Key Features
+##  Key Features
 
-### 🔍 Core Capabilities
+### Core Capabilities
 
 | Feature | Description |
 |---------|-------------|
@@ -85,7 +85,7 @@ This system reduces verification time to **< 30 seconds** with **98.5% accuracy*
 | **Anomaly Scoring** | Real-time risk scores (0-10) with configurable thresholds |
 | **Blockchain Audit Trail** | Immutable verification logs on Ethereum Sepolia |
 
-### 🎨 User Experience
+### User Experience
 
 - **Secure Authentication**: JWT-based login with bcrypt password hashing
 - **Document Upload & Verification**: Drag-and-drop interface with instant feedback
@@ -93,7 +93,7 @@ This system reduces verification time to **< 30 seconds** with **98.5% accuracy*
 - **Manual Review Workflow**: Override AI decisions with audit trails
 - **Real-time Notifications**: WebSocket updates for verification status
 
-### 🔐 Security & Compliance
+### Security & Compliance
 
 - **Role-Based Access Control (RBAC)**: Admin, Issuer, Verifier roles
 - **Data Encryption**: AES-256 for documents at rest, TLS 1.3 in transit
@@ -102,7 +102,7 @@ This system reduces verification time to **< 30 seconds** with **98.5% accuracy*
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -151,7 +151,7 @@ This system reduces verification time to **< 30 seconds** with **98.5% accuracy*
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Frontend
 - **Framework**: React 19.2 with React Router v7
@@ -190,7 +190,7 @@ This system reduces verification time to **< 30 seconds** with **98.5% accuracy*
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 AI-Powered-Identity-Verification-and-Fraud-Detection-for-KYC-Compliance/
@@ -253,7 +253,7 @@ AI-Powered-Identity-Verification-and-Fraud-Detection-for-KYC-Compliance/
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -345,7 +345,7 @@ Open your browser and navigate to:
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 ### Backend Environment Variables (`.env`)
 
@@ -380,7 +380,7 @@ const MODERATE_ANOMALY = 4.0;    // Scores 3.0-3.99 → Yellow
 
 ---
 
-## 📡 API Documentation
+## API Documentation
 
 ### Authentication Endpoints
 
@@ -537,7 +537,7 @@ Response (200):
 
 ---
 
-## 🧠 ML Models & Algorithms
+## ML Models & Algorithms
 
 ### 1. Document Classification (TensorFlow Lite)
 
@@ -637,16 +637,16 @@ structured_json = groq_client.chat.completions.create(
 
 ---
 
-## 🔗 Blockchain Integration
+## Blockchain Integration
 
 ### VeriChainKYC: Ethereum-Based Audit Trail
 
 The optional blockchain module provides:
 
-✅ **Immutable Logs**: All verifications written to Ethereum Sepolia  
-✅ **Role-Based Access**: Admin/Issuer/Verifier smart contract roles  
-✅ **Fraud Reporting**: On-chain fraud score logging  
-✅ **Governance**: Proposal and voting system for disputed cases
+ **Immutable Logs**: All verifications written to Ethereum Sepolia  
+ **Role-Based Access**: Admin/Issuer/Verifier smart contract roles  
+ **Fraud Reporting**: On-chain fraud score logging  
+ **Governance**: Proposal and voting system for disputed cases
 
 **Smart Contract Functions**:
 ```solidity
@@ -667,7 +667,7 @@ function getAccessLogs(bytes32 hash) public view returns (AccessLog[])
 
 ---
 
-## 📊 Performance Metrics
+## Performance Metrics
 
 ### System Performance
 
@@ -686,12 +686,6 @@ function getAccessLogs(bytes32 hash) public view returns (AccessLog[])
 | PAN Card | 98.9% | 0.93 |
 | Passport | 99.1% | 0.95 |
 
-### Cost Savings
-
-- **Manual Review Time Reduction**: 95% (5 days → 30 seconds)
-- **Operational Cost Savings**: $80 per verification
-- **Fraud Prevention**: $2.5M saved annually (for 10k verifications)
-
 ---
 
 ## 📸 Screenshots
@@ -708,11 +702,16 @@ function getAccessLogs(bytes32 hash) public view returns (AccessLog[])
 ### 3. Verification Result (Approved)
 <img width="1919" height="975" alt="image" src="https://github.com/user-attachments/assets/cd67a775-60d0-47c8-8277-8ea24fa44cc1" />
 
-### 5. Verification History Dashboard
+### 4. Verification History Dashboard
 <img width="1919" height="972" alt="image" src="https://github.com/user-attachments/assets/65aa1673-4f35-4a36-93e8-7906a830abc7" />
 
+### 5. Block chain service
+<img width="1899" height="900" alt="image" src="https://github.com/user-attachments/assets/e8af3351-6ecf-4e50-a001-ad47fa725e89" />
+<img width="1895" height="923" alt="image" src="https://github.com/user-attachments/assets/3b962955-8aba-43db-8c96-938889ff4f03" />
+<img width="1914" height="904" alt="image" src="https://github.com/user-attachments/assets/b27d0cb9-102f-4a32-9179-b96173a165a8" />
+<img width="1895" height="918" alt="image" src="https://github.com/user-attachments/assets/7c8ccce3-3b8a-4839-a8c1-c54883634c22" />
 
-## 📊 Datasets
+## Datasets
 
 The training datasets used for document classification and fraud detection models are available in the [`datasets/`](datasets/) folder and on Google Drive.
 
@@ -748,7 +747,7 @@ print(f"Loaded {len(aadhaar_data)} Aadhaar records")
 
 ---
 
-## 🗺️ Roadmap
+## Roadmap
 
 ### Phase 1: Core Features ✅ (Completed)
 - [x] User authentication and authorization
@@ -775,14 +774,14 @@ print(f"Loaded {len(aadhaar_data)} Aadhaar records")
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Here's how you can help:
 
 ### Reporting Issues
 
 Found a bug? Have a feature request?  
-👉 [Open an issue](https://github.com/yourusername/AI-Powered-Identity-Verification-and-Fraud-Detection-for-KYC-Compliance/issues)
+ [Open an issue](https://github.com/yourusername/AI-Powered-Identity-Verification-and-Fraud-Detection-for-KYC-Compliance/issues)
 
 ### Contributing Code
 
@@ -807,7 +806,7 @@ cd ml-service && pytest tests/
 
 ---
 
-## 📄 License
+##  License
 
 This project is licensed under the **MIT Vidzai Digital License** - see the [LICENSE](LICENSE) file for details.
 
@@ -833,7 +832,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 ---
 
-## 📧 Contact
+##  Contact
 
 **Project Maintainer**: A Gireesh Kumar Gowd  
 **Email**: [gireeshkumargowd@gmail.com](mailto:gireeshkumargowd@gmail.com)  
@@ -848,7 +847,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 ---
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - **TensorFlow Team** for MobileNetV2 pre-trained models
 - **PyTorch Geometric** for GNN implementation
@@ -860,7 +859,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 
 ---
 
-## 📚 Citations
+##  Citations
 
 If you use this project in your research, please cite:
 
@@ -877,9 +876,7 @@ If you use this project in your research, please cite:
 
 <div align="center">
 
-**⭐ If you find this project useful, please consider giving it a star! ⭐**
-
-Made with ❤️ for the BFSI community
+** If you find this project useful, please consider giving it a star! **
 
 [Back to Top](#-ai-powered-identity-verification--fraud-detection-for-kyc-compliance)
 
